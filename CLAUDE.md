@@ -31,3 +31,7 @@ Use the `/browse` skill from gstack for all web browsing. Never use `mcp__claude
 - `/guard` - Guard
 - `/unfreeze` - Unfreeze
 - `/gstack-upgrade` - Upgrade gstack
+
+# Problem Statement Generator
+
+When the user asks for hackathon ideas, problem statements, startup ideas, innovation challenge solutions, or project concepts, follow the 7-step generation engine defined in `.claude/skills/problem-statement-generator.md`. Specificity wins — every idea must pass the "Chandni Chowk Test" (specific place, specific number, or specific incident).
