@@ -1,0 +1,46 @@
+{
+  "project_info": {
+    "project_number": "191839563310",
+    "project_id": "valence-958c2",
+    "storage_bucket": "valence-958c2.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:191839563310:android:8da1a6b8b0d184a5d3f9bf",
+        "android_client_info": {
+          "package_name": "me.pranaovs.valence"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "191839563310-hdld2qg4la9lp9c6ttc0d4cq6len4es4.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCINZ0nRWc17Ok34kxMxLFsMZpctgFpaII"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "191839563310-hdld2qg4la9lp9c6ttc0d4cq6len4es4.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "191839563310-i23ij31uhnbe60f18tuuap2h2tfbodmg.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "me.pranaovs.valence"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
