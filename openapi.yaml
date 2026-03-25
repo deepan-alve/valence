@@ -1,0 +1,1305 @@
+openapi: 3.0.3
+info:
+  title: Valance Habit Tracking API
+  version: 1.0.0
+  description: |
+    Valance is a social habit-tracking application that combats user churn through
+    friction reduction, Behavioral Change Techniques, and Persuasive System Design.
+
+    ## Authentication
+    All protected endpoints require a Firebase JWT in the `Authorization` header as
+    `Bearer <token>`. In development mode, the `X-Dev-User-Id` header can bypass
+    Firebase auth by providing a user UUID directly.
+
+    ## Response Format
+    Every response follows one of two shapes:
+
+    **Success:**
+    ```json
+    { "status": "ok", "data": { ... } }
+    ```
+
+    **Error:**
+    ```json
+    { "status": "error", "error": { "code": "SOME_CODE", "message": "Human-readable message" } }
+    ```
+
+    **Paginated:**
+    ```json
+    {
+      "status": "ok",
+      "data": [ ... ],
+      "pagination": { "page": 1, "per_page": 20, "total": 142, "has_next": true }
+    }
+    ```
+
+    ## Date Conventions
+    - All date fields use `YYYY-MM-DD` format (e.g., `2026-03-25`).
+    - All timestamp fields use ISO 8601 format (e.g., `2026-03-25T14:30:00.000Z`).
+
+    ## Gamification Constants
+    | Constant | Value |
+    |---|---|
+    | Light habit points | 5 XP + 5 Sparks |
+    | Moderate habit points | 10 XP + 10 Sparks |
+    | Intense habit points | 20 XP + 20 Sparks |
+    | Perfect day bonus | 25 XP + 25 Sparks |
+    | 7-day streak milestone | 30 XP + 30 Sparks |
+    | 30-day streak milestone | 100 XP + 100 Sparks |
+    | 100-day streak milestone | 500 XP + 500 Sparks |
+    | Welcome bonus (first completion) | 50 XP + 50 Sparks |
+    | Max active habits | 7 |
+    | Group size | 3-7 members |
+    | Altruistic freeze cost | 100 Sparks |
+    | Max freezes per group per day | 1 |
+
+    ## Rank Thresholds
+    | Rank | XP Required |
+    |---|---|
+    | Bronze | 0 |
+    | Silver | 500 |
+    | Gold | 2,000 |
+    | Platinum | 5,000 |
+    | Diamond | 15,000 |
+
+    ## Group Tier Thresholds
+    | Tier | Streak Days |
+    |---|---|
+    | Spark | 0 |
+    | Ember | 7 |
+    | Flame | 21 |
+    | Blaze | 66 |
+
+    ## Goal Stages (per-habit, 66-day framework)
+    | Stage | Days Required |
+    |---|---|
+    | Ignition | 3 |
+    | Foundation | 10 |
+    | Momentum | 21 |
+    | Formed | 66 |
+
+  contact:
+    name: Valance Dev Team
+  license:
+    name: MIT
+
+servers:
+  - url: http://localhost:3000
+    description: Local development server
+  - url: https://api.valance.app
+    description: Production server
+
+tags:
+  - name: Auth
+    description: Firebase-based authentication. No Bearer token required for these endpoints.
+  - name: Users
+    description: User profile, settings, equipped cosmetics, and public profiles.
+  - name: Habits
+    description: >
+      CRUD for habits, daily completion, miss logging, and log history.
+      Each user may have up to 7 active habits. Habits have individual streaks,
+      goal stages, and contribute to group chain links.
+  - name: Groups
+    description: >
+      Friend circles (3-7 members). Groups track collaborative chain links,
+      tiers, leaderboards, and support altruistic streak freezes.
+  - name: Social
+    description: >
+      Nudges (conditional, LLM-generated) and kudos between group members.
+      Nudging requires the sender to have completed all their habits for the day.
+  - name: Shop
+    description: >
+      Cosmetic item shop. Items cost Sparks and are gated by minimum rank.
+      Categories include themes, flames, animations, card styles, fonts, patterns,
+      icons, profile frames, banners, and more.
+  - name: Plugins
+    description: >
+      External integration system for automatic habit verification.
+      Supports LeetCode, GitHub, Wakapi, Google Fit, Duolingo, Screen Time, Strava,
+      Chess.com, and Todoist.
+  - name: Insights
+    description: >
+      Daily reflections, LLM-powered failure pattern analysis, and persona-driven
+      motivational messages for the home screen.
+  - name: Notifications
+    description: Push notification history and read-state management.
+
+security:
+  - BearerAuth: []
+
+paths:
+  # ============================================================
+  # AUTH
+  # ============================================================
+  /api/v1/auth/register:
+    post:
+      tags: [Auth]
+      summary: Register a new user
+      operationId: authRegister
+      security: []
+      description: |
+        Accepts a Firebase ID token, verifies it with Firebase Admin SDK, and creates
+        a new Valance user. If the Firebase UID already exists, returns 409 Conflict.
+
+        **Server-side effects:**
+        - Verifies the Firebase token and extracts uid, email, name, and photo.
+        - Creates a new user row with default rank (bronze), 0 XP, 0 Sparks,
+          default equipped cosmetics, default notification preferences, and
+          persona_type "general".
+        - Returns the created user along with welcome bonus info (50 XP + 50 Sparks
+          will be awarded on first habit completion).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [firebase_token]
+              properties:
+                firebase_token:
+                  type: string
+                  description: Firebase ID token obtained from Firebase Auth SDK on the client.
+                  minLength: 100
+                  example: "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJodHRwczov..."
+                name:
+                  type: string
+                  description: Display name. If omitted, extracted from Firebase token.
+                  minLength: 1
+                  maxLength: 100
+                  example: "Deepan"
+                timezone:
+                  type: string
+                  description: IANA timezone identifier. Defaults to "UTC".
+                  maxLength: 50
+                  default: "UTC"
+                  example: "Asia/Kolkata"
+            example:
+              firebase_token: "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9..."
+              name: "Deepan"
+              timezone: "Asia/Kolkata"
+      responses:
+        "201":
+          description: User created successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse_User"
+              example:
+                status: "ok"
+                data:
+                  id: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+                  firebase_uid: "firebase_abc123"
+                  email: "deepan@example.com"
+                  name: "Deepan"
+                  avatar: null
+                  xp: 0
+                  sparks: 0
+                  rank: "bronze"
+                  persona_type: "general"
+                  equipped:
+                    theme: "nocturnal"
+                    flame: "default"
+                    animation: "default"
+                    card_style: "default"
+                    font: "default"
+                    pattern: "none"
+                    icon: "default"
+                    profile_frame: null
+                    profile_banner: null
+                    party_badge: null
+                    celebration: "default"
+                    milestone_card: "default"
+                    sound: "default"
+                    freeze_animation: "default"
+                    summary_style: "default"
+                    party_entrance: "default"
+                    name_color: null
+                  notification_preferences:
+                    morning: true
+                    nudges: true
+                    memes: true
+                    reflection: true
+                  timezone: "Asia/Kolkata"
+                  welcome_bonus_pending: true
+                  created_at: "2026-03-25T10:00:00.000Z"
+                  updated_at: "2026-03-25T10:00:00.000Z"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          description: Invalid or expired Firebase token.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                status: "error"
+                error:
+                  code: "INVALID_TOKEN"
+                  message: "The provided Firebase token is invalid or expired."
+        "409":
+          description: User with this Firebase UID already exists.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                status: "error"
+                error:
+                  code: "USER_EXISTS"
+                  message: "A user with this Firebase account already exists. Use /auth/login instead."
+
+  /api/v1/auth/login:
+    post:
+      tags: [Auth]
+      summary: Login an existing user
+      operationId: authLogin
+      security: []
+      description: |
+        Accepts a Firebase ID token, verifies it, and returns the existing Valance
+        user associated with that Firebase UID. If no user is found, returns 404.
+
+        **Server-side effects:**
+        - Verifies the Firebase token.
+        - Looks up the user by Firebase UID.
+        - Optionally updates FCM token if provided.
+        - Returns the full user object.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [firebase_token]
+              properties:
+                firebase_token:
+                  type: string
+                  description: Firebase ID token from client SDK.
+                  minLength: 100
+                  example: "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9..."
+                fcm_token:
+                  type: string
+                  description: Firebase Cloud Messaging token for push notifications. Updated on each login.
+                  maxLength: 500
+                  example: "dGhpcyBpcyBhIGZjbSB0b2tlbg..."
+            example:
+              firebase_token: "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9..."
+              fcm_token: "dGhpcyBpcyBhIGZjbSB0b2tlbg..."
+      responses:
+        "200":
+          description: Login successful. Returns full user object.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse_User"
+              example:
+                status: "ok"
+                data:
+                  id: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+                  firebase_uid: "firebase_abc123"
+                  email: "deepan@example.com"
+                  name: "Deepan"
+                  avatar: "https://lh3.googleusercontent.com/photo.jpg"
+                  xp: 780
+                  sparks: 430
+                  rank: "silver"
+                  persona_type: "achiever"
+                  equipped:
+                    theme: "neon_terminal"
+                    flame: "blue"
+                    animation: "confetti_burst"
+                    card_style: "glassmorphic"
+                    font: "monospace"
+                    pattern: "grid"
+                    icon: "default"
+                    profile_frame: null
+                    profile_banner: null
+                    party_badge: null
+                    celebration: "default"
+                    milestone_card: "default"
+                    sound: "default"
+                    freeze_animation: "default"
+                    summary_style: "default"
+                    party_entrance: "default"
+                    name_color: null
+                  notification_preferences:
+                    morning: true
+                    nudges: true
+                    memes: false
+                    reflection: true
+                  timezone: "Asia/Kolkata"
+                  created_at: "2026-02-01T10:00:00.000Z"
+                  updated_at: "2026-03-25T10:00:00.000Z"
+        "401":
+          description: Invalid or expired Firebase token.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                status: "error"
+                error:
+                  code: "INVALID_TOKEN"
+                  message: "The provided Firebase token is invalid or expired."
+        "404":
+          description: No Valance user found for this Firebase UID. Register first.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                status: "error"
+                error:
+                  code: "USER_NOT_FOUND"
+                  message: "No account found. Please register first."
+
+  /api/v1/auth/refresh:
+    post:
+      tags: [Auth]
+      summary: Verify token and return current user
+      operationId: authRefresh
+      security: []
+      description: |
+        Verifies a Firebase ID token and returns the current user state. Useful for
+        app startup to validate the session and get the latest user data without
+        requiring a full login flow. Also updates FCM token if provided.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [firebase_token]
+              properties:
+                firebase_token:
+                  type: string
+                  description: Firebase ID token to verify.
+                  minLength: 100
+                  example: "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9..."
+                fcm_token:
+                  type: string
+                  description: Updated FCM token for push notifications.
+                  maxLength: 500
+            example:
+              firebase_token: "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9..."
+      responses:
+        "200":
+          description: Token valid. Returns current user.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse_User"
+        "401":
+          description: Token invalid or expired.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                status: "error"
+                error:
+                  code: "INVALID_TOKEN"
+                  message: "Token is invalid or expired. Please re-authenticate."
+
+  # ============================================================
+  # USERS
+  # ============================================================
+  /api/v1/users/me:
+    get:
+      tags: [Users]
+      summary: Get current user profile
+      operationId: getCurrentUser
+      description: |
+        Returns the full profile of the authenticated user, including XP, Sparks,
+        rank, equipped cosmetics, notification preferences, timezone, and timestamps.
+        This is the primary endpoint for loading user state on app open.
+      responses:
+        "200":
+          description: Full user profile.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse_User"
+              example:
+                status: "ok"
+                data:
+                  id: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+                  firebase_uid: "firebase_abc123"
+                  email: "deepan@example.com"
+                  name: "Deepan"
+                  avatar: "https://lh3.googleusercontent.com/photo.jpg"
+                  xp: 780
+                  sparks: 430
+                  rank: "silver"
+                  persona_type: "achiever"
+                  equipped:
+                    theme: "neon_terminal"
+                    flame: "blue"
+                    animation: "confetti_burst"
+                    card_style: "glassmorphic"
+                    font: "monospace"
+                    pattern: "grid"
+                    icon: "default"
+                    profile_frame: null
+                    profile_banner: null
+                    party_badge: null
+                    celebration: "default"
+                    milestone_card: "default"
+                    sound: "default"
+                    freeze_animation: "default"
+                    summary_style: "default"
+                    party_entrance: "default"
+                    name_color: null
+                  notification_preferences:
+                    morning: true
+                    nudges: true
+                    memes: false
+                    reflection: true
+                  timezone: "Asia/Kolkata"
+                  created_at: "2026-02-01T10:00:00.000Z"
+                  updated_at: "2026-03-25T10:00:00.000Z"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/v1/users/me/settings:
+    patch:
+      tags: [Users]
+      summary: Update user settings
+      operationId: updateUserSettings
+      description: |
+        Updates user preferences: notification settings, timezone, and persona type.
+        Only provided fields are updated (partial update). Non-provided fields remain unchanged.
+
+        **Notification preferences** control which push notifications the user receives:
+        - `morning`: Daily morning activation reminder (07:00 user-local)
+        - `nudges`: Friend nudge notifications
+        - `memes`: Fun/meme-style notification variants
+        - `reflection`: Evening reflection prompt (21:00 user-local)
+
+        **Persona type** changes the home screen experience:
+        - `socialiser`: Social pressure emphasis ("3 people in your group are relying on you")
+        - `achiever`: Stats-forward (streak, XP, rank progress)
+        - `general`: Balanced progress + group status
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                notification_preferences:
+                  $ref: "#/components/schemas/NotificationPreferences"
+                timezone:
+                  type: string
+                  description: IANA timezone identifier (e.g., "America/New_York", "Asia/Kolkata").
+                  maxLength: 50
+                  example: "Asia/Kolkata"
+                persona_type:
+                  $ref: "#/components/schemas/PersonaType"
+            example:
+              notification_preferences:
+                morning: true
+                nudges: true
+                memes: false
+                reflection: true
+              timezone: "Asia/Kolkata"
+              persona_type: "achiever"
+      responses:
+        "200":
+          description: Settings updated. Returns full user.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse_User"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/v1/users/me/equip:
+    patch:
+      tags: [Users]
+      summary: Update equipped cosmetics
+      operationId: updateEquipped
+      description: |
+        Updates the user's equipped cosmetic items. Only provided fields are updated.
+        The server validates that the user owns each item being equipped (i.e., has
+        purchased it from the shop). Attempting to equip an unowned item returns 403.
+
+        Each field corresponds to a shop category. The value is the `asset_key` of the
+        owned item, or a default value (e.g., "default", "none", null).
+
+        **Equipped cosmetics determine the entire visual presentation of the app:**
+        - `theme`: Full color palette, typography, shapes, animations, background
+        - `flame`: Streak flame icon style
+        - `animation`: Check/completion animation
+        - `card_style`: Habit card visual treatment
+        - `font`: App-wide font family
+        - `pattern`: Background pattern overlay
+        - `icon`: Home screen app icon
+        - `profile_frame`: Decorative frame around profile avatar
+        - `profile_banner`: Banner image on profile page
+        - `party_badge`: Badge shown next to name in group contexts
+        - `celebration`: Special animation for milestones
+        - `milestone_card`: Visual style for milestone cards in feed
+        - `sound`: Sound effects pack
+        - `freeze_animation`: Animation when altruistic freeze is used
+        - `summary_style`: Visual style for weekly summary cards
+        - `party_entrance`: Animation when joining a group session
+        - `name_color`: Custom color for username display
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EquippedCosmetics"
+            example:
+              theme: "neon_terminal"
+              flame: "blue"
+              animation: "confetti_burst"
+      responses:
+        "200":
+          description: Cosmetics updated. Returns full user with new equipped state.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse_User"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          description: User does not own one or more of the items being equipped.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                status: "error"
+                error:
+                  code: "ITEM_NOT_OWNED"
+                  message: "You do not own the item 'neon_terminal'. Purchase it from the shop first."
+
+  /api/v1/users/{id}/profile:
+    get:
+      tags: [Users]
+      summary: Get public profile of a user
+      operationId: getUserProfile
+      description: |
+        Returns a public-facing profile of the specified user. This is a limited view
+        that excludes private fields like email, Sparks balance, notification preferences,
+        and Firebase UID. Used when viewing another user's profile in a group context.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: UUID of the user whose profile to view.
+          schema:
+            type: string
+            format: uuid
+            example: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+      responses:
+        "200":
+          description: Public profile.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: ["ok"]
+                  data:
+                    $ref: "#/components/schemas/PublicProfile"
+              example:
+                status: "ok"
+                data:
+                  id: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+                  name: "Deepan"
+                  avatar: "https://lh3.googleusercontent.com/photo.jpg"
+                  xp: 780
+                  rank: "silver"
+                  persona_type: "achiever"
+                  equipped:
+                    theme: "neon_terminal"
+                    flame: "blue"
+                    animation: "confetti_burst"
+                    card_style: "glassmorphic"
+                    font: "monospace"
+                    pattern: "grid"
+                    icon: "default"
+                    profile_frame: null
+                    profile_banner: null
+                    party_badge: null
+                    celebration: "default"
+                    milestone_card: "default"
+                    sound: "default"
+                    freeze_animation: "default"
+                    summary_style: "default"
+                    party_entrance: "default"
+                    name_color: null
+                  created_at: "2026-02-01T10:00:00.000Z"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          description: User not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                status: "error"
+                error:
+                  code: "USER_NOT_FOUND"
+                  message: "User not found."
+
+  # ============================================================
+  # HABITS
+  # ============================================================
+  /api/v1/habits:
+    post:
+      tags: [Habits]
+      summary: Create a new habit
+      operationId: createHabit
+      description: |
+        Creates a new active habit for the authenticated user. Each user may have at
+        most 7 active habits. Attempting to create an 8th returns 409.
+
+        The habit starts with:
+        - current_streak: 0
+        - longest_streak: 0
+        - total_completed: 0
+        - goal_stage: "ignition"
+        - is_active: true
+
+        If `tracking_method` is "plugin", the `plugin_id` field must reference a valid
+        plugin. The user must separately connect the plugin via POST /plugins/:id/connect.
+
+        `redirect_url` is an optional deep link that the Flutter app opens when the user
+        taps "Start" on this habit card (e.g., a LeetCode problem URL, Kindle app link).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name:
+                  type: string
+                  description: Human-readable habit name shown on cards and in the group feed.
+                  minLength: 1
+                  maxLength: 200
+                  example: "Solve 1 LeetCode problem"
+                intensity:
+                  $ref: "#/components/schemas/Intensity"
+                tracking_method:
+                  $ref: "#/components/schemas/TrackingMethod"
+                plugin_id:
+                  type: string
+                  description: |
+                    Plugin identifier for automatic tracking. Required when tracking_method is "plugin".
+                    Valid values: leetcode, github, wakapi, google_fit, duolingo, screen_time, strava, chess_com, todoist.
+                  maxLength: 50
+                  nullable: true
+                  example: "leetcode"
+                redirect_url:
+                  type: string
+                  description: Deep link URL opened when user taps "Start" on the habit card.
+                  maxLength: 500
+                  nullable: true
+                  example: "https://leetcode.com/problemset/"
+                visibility:
+                  $ref: "#/components/schemas/Visibility"
+            example:
+              name: "Solve 1 LeetCode problem"
+              intensity: "moderate"
+              tracking_method: "plugin"
+              plugin_id: "leetcode"
+              redirect_url: "https://leetcode.com/problemset/"
+              visibility: "full"
+      responses:
+        "201":
+          description: Habit created.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: ["ok"]
+                  data:
+                    $ref: "#/components/schemas/Habit"
+              example:
+                status: "ok"
+                data:
+                  id: "b2c3d4e5-f6a7-8901-bcde-f12345678901"
+                  user_id: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+                  name: "Solve 1 LeetCode problem"
+                  intensity: "moderate"
+                  tracking_method: "plugin"
+                  plugin_id: "leetcode"
+                  redirect_url: "https://leetcode.com/problemset/"
+                  visibility: "full"
+                  is_active: true
+                  current_streak: 0
+                  longest_streak: 0
+                  total_completed: 0
+                  goal_stage: "ignition"
+                  last_completed_date: null
+                  today_completed: false
+                  created_at: "2026-03-25T10:00:00.000Z"
+                  updated_at: "2026-03-25T10:00:00.000Z"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "409":
+          description: Maximum active habits (7) reached.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                status: "error"
+                error:
+                  code: "MAX_HABITS_REACHED"
+                  message: "You already have 7 active habits. Archive one before creating a new one."
+    get:
+      tags: [Habits]
+      summary: List active habits with today's status
+      operationId: listHabits
+      description: |
+        Returns all active habits for the authenticated user. Each habit includes a
+        computed `today_completed` boolean indicating whether the habit has been
+        completed for the current date (in the user's timezone).
+
+        Archived (is_active=false) habits are excluded. Use this endpoint to render
+        the home screen habit cards.
+      responses:
+        "200":
+          description: List of active habits.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: ["ok"]
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Habit"
+              example:
+                status: "ok"
+                data:
+                  - id: "b2c3d4e5-f6a7-8901-bcde-f12345678901"
+                    user_id: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+                    name: "Solve 1 LeetCode problem"
+                    intensity: "moderate"
+                    tracking_method: "plugin"
+                    plugin_id: "leetcode"
+                    redirect_url: "https://leetcode.com/problemset/"
+                    visibility: "full"
+                    is_active: true
+                    current_streak: 14
+                    longest_streak: 14
+                    total_completed: 14
+                    goal_stage: "foundation"
+                    last_completed_date: "2026-03-24"
+                    today_completed: false
+                    created_at: "2026-03-10T10:00:00.000Z"
+                    updated_at: "2026-03-25T10:00:00.000Z"
+                  - id: "c3d4e5f6-a7b8-9012-cdef-123456789012"
+                    user_id: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+                    name: "Read 30 pages"
+                    intensity: "light"
+                    tracking_method: "manual"
+                    plugin_id: null
+                    redirect_url: null
+                    visibility: "full"
+                    is_active: true
+                    current_streak: 7
+                    longest_streak: 7
+                    total_completed: 7
+                    goal_stage: "ignition"
+                    last_completed_date: "2026-03-25"
+                    today_completed: true
+                    created_at: "2026-03-18T10:00:00.000Z"
+                    updated_at: "2026-03-25T10:00:00.000Z"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/v1/habits/{id}:
+    patch:
+      tags: [Habits]
+      summary: Update a habit
+      operationId: updateHabit
+      description: |
+        Partially updates a habit's mutable fields. Only the owner can update their habit.
+        Updatable fields: name, intensity, redirect_url, visibility, tracking_method, plugin_id.
+        Streak, goal_stage, and completion data cannot be modified via this endpoint.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: UUID of the habit to update.
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  minLength: 1
+                  maxLength: 200
+                  example: "Solve 2 LeetCode problems"
+                intensity:
+                  $ref: "#/components/schemas/Intensity"
+                tracking_method:
+                  $ref: "#/components/schemas/TrackingMethod"
+                plugin_id:
+                  type: string
+                  maxLength: 50
+                  nullable: true
+                redirect_url:
+                  type: string
+                  maxLength: 500
+                  nullable: true
+                visibility:
+                  $ref: "#/components/schemas/Visibility"
+            example:
+              name: "Solve 2 LeetCode problems"
+              intensity: "intense"
+      responses:
+        "200":
+          description: Habit updated.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: ["ok"]
+                  data:
+                    $ref: "#/components/schemas/Habit"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          description: Not the owner of this habit.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Habit not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    delete:
+      tags: [Habits]
+      summary: Archive a habit
+      operationId: archiveHabit
+      description: |
+        Archives a habit by setting `is_active` to false. The habit is NOT deleted --
+        historical logs and streak data are preserved. The habit will no longer appear
+        in the active habits list and will not count toward "perfect day" or group
+        chain link calculations.
+
+        The habit's streak is frozen (preserved at its current value). It can be
+        viewed in the user's habit history on their profile.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: UUID of the habit to archive.
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Habit archived.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: ["ok"]
+                  data:
+                    type: object
+                    properties:
+                      message:
+                        type: string
+                        example: "Habit archived successfully."
+                      habit_id:
+                        type: string
+                        format: uuid
+              example:
+                status: "ok"
+                data:
+                  message: "Habit archived successfully."
+                  habit_id: "b2c3d4e5-f6a7-8901-bcde-f12345678901"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          description: Not the owner of this habit.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Habit not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/v1/habits/{id}/complete:
+    post:
+      tags: [Habits]
+      summary: Complete a habit for today
+      operationId: completeHabit
+      description: |
+        Marks a habit as completed for the current date (in user's timezone). This is the
+        core interaction -- a single tap to log completion.
+
+        **Server-side effects (in order):**
+        1. Verify ownership and that the habit is active.
+        2. Check not already completed today (returns 409 if duplicate).
+        3. Insert a HabitLog row with `completed=true`.
+        4. Update streak: if yesterday was also completed, increment `current_streak`;
+           otherwise reset `current_streak` to 1. Update `longest_streak` if new record.
+        5. Increment `total_completed`.
+        6. Check goal_stage transitions based on `current_streak`:
+           - 3 days -> "ignition", 10 -> "foundation", 21 -> "momentum", 66 -> "formed"
+        7. Award XP and Sparks based on intensity (light=5, moderate=10, intense=20).
+        8. If this is the user's FIRST EVER habit completion, award 50 bonus XP+Sparks.
+        9. Check if ALL active habits are now completed today -> "perfect day" bonus (+25 XP+Sparks).
+        10. Check streak milestones (7/30/100 days) -> bonus XP+Sparks + feed item.
+        11. Insert group feed item for this completion.
+        12. If milestone reached, trigger Status+Norm sequence via Gemini LLM.
+        13. Update user rank if XP crosses a threshold (500/2000/5000/15000).
+
+        **Returns:** The updated habit, points earned breakdown, streak info, whether
+        perfect day was achieved, whether goal stage changed, and whether rank changed.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: UUID of the habit to complete.
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                verification_source:
+                  $ref: "#/components/schemas/VerificationSource"
+                proof_url:
+                  type: string
+                  description: URL to a photo proof (for photo verification).
+                  maxLength: 500
+                  nullable: true
+            example:
+              verification_source: "manual"
+      responses:
+        "200":
+          description: Habit completed. Returns rich completion result.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: ["ok"]
+                  data:
+                    type: object
+                    properties:
+                      habit:
+                        $ref: "#/components/schemas/Habit"
+                      points_earned:
+                        type: object
+                        description: Breakdown of XP and Sparks earned from this completion.
+                        properties:
+                          base:
+                            type: integer
+                            description: Points from habit intensity.
+                            example: 10
+                          perfect_day_bonus:
+                            type: integer
+                            description: Bonus for completing all habits today. 0 if not achieved.
+                            example: 25
+                          streak_milestone_bonus:
+                            type: integer
+                            description: Bonus for hitting a streak milestone (7/30/100). 0 if none.
+                            example: 0
+                          welcome_bonus:
+                            type: integer
+                            description: One-time bonus for first ever completion. 0 otherwise.
+                            example: 0
+                          total:
+                            type: integer
+                            description: Total XP and Sparks earned (same amount for both).
+                            example: 35
+                      streak:
+                        type: object
+                        properties:
+                          current:
+                            type: integer
+                            example: 15
+                          longest:
+                            type: integer
+                            example: 15
+                          milestone_reached:
+                            type: integer
+                            nullable: true
+                            description: The milestone hit (7, 30, or 100), or null if none.
+                            example: null
+                      perfect_day:
+                        type: boolean
+                        description: Whether all active habits are now completed for today.
+                        example: true
+                      goal_stage_changed:
+                        type: boolean
+                        description: Whether the goal stage transitioned (e.g., ignition -> foundation).
+                        example: false
+                      new_goal_stage:
+                        $ref: "#/components/schemas/GoalStage"
+                      rank_changed:
+                        type: boolean
+                        description: Whether the user's rank was promoted due to XP earned.
+                        example: false
+                      new_rank:
+                        $ref: "#/components/schemas/Rank"
+              example:
+                status: "ok"
+                data:
+                  habit:
+                    id: "b2c3d4e5-f6a7-8901-bcde-f12345678901"
+                    user_id: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+                    name: "Solve 1 LeetCode problem"
+                    intensity: "moderate"
+                    tracking_method: "plugin"
+                    plugin_id: "leetcode"
+                    redirect_url: "https://leetcode.com/problemset/"
+                    visibility: "full"
+                    is_active: true
+                    current_streak: 15
+                    longest_streak: 15
+                    total_completed: 15
+                    goal_stage: "foundation"
+                    last_completed_date: "2026-03-25"
+                    today_completed: true
+                    created_at: "2026-03-10T10:00:00.000Z"
+                    updated_at: "2026-03-25T14:30:00.000Z"
+                  points_earned:
+                    base: 10
+                    perfect_day_bonus: 25
+                    streak_milestone_bonus: 0
+                    welcome_bonus: 0
+                    total: 35
+                  streak:
+                    current: 15
+                    longest: 15
+                    milestone_reached: null
+                  perfect_day: true
+                  goal_stage_changed: false
+                  new_goal_stage: "foundation"
+                  rank_changed: false
+                  new_rank: "silver"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          description: Not the owner of this habit.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Habit not found or not active.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Habit already completed today.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                status: "error"
+                error:
+                  code: "ALREADY_COMPLETED"
+                  message: "This habit has already been completed today."
+
+  /api/v1/habits/{id}/miss:
+    post:
+      tags: [Habits]
+      summary: Log a missed habit with reason
+      operationId: logMiss
+      description: |
+        Logs that the user missed a habit for today with a reason. The streak PAUSES
+        (does not reset to zero). This is part of the Grace System designed to prevent
+        the "what-the-hell" effect.
+
+        **Server-side effects:**
+        1. Insert a MissLog with the reason category and optional free text.
+        2. Asynchronously send the reason text to Gemini LLM for categorization and
+           pattern signal extraction (e.g., "Thursday evening fatigue").
+        3. The streak pauses -- current_streak is NOT decremented.
+        4. Insert a group feed item (respects visibility setting -- if "minimal",
+           group sees "missed" but not the reason or habit name).
+        5. Return a supportive, non-punitive message generated by LLM or from templates.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: UUID of the habit that was missed.
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [reason_category]
+              properties:
+                reason_category:
+                  $ref: "#/components/schemas/MissReason"
+                reason_text:
+                  type: string
+                  description: Optional free-text explanation. Fed to LLM for pattern analysis.
+                  maxLength: 500
+                  nullable: true
+                  example: "Had back-to-back meetings until 9 PM"
+            example:
+              reason_category: "busy"
+              reason_text: "Had back-to-back meetings until 9 PM"
+      responses:
+        "200":
+          description: Miss logged. Returns supportive message.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: ["ok"]
+                  data:
+                    type: object
+                    properties:
+                      miss_log:
+                        $ref: "#/components/schemas/MissLog"
+                      supportive_message:
+                        type: string
+                        description: LLM-generated or template supportive message encouraging the user.
+                        example: "Busy days happen. Your 14-day streak is still intact -- it pauses, never resets. Tomorrow is a fresh start."
+              example:
+                status: "ok"
+                data:
+                  miss_log:
+                    id: "d4e5f6a7-b8c9-0123-def0-123456789abc"
+                    habit_id: "b2c3d4e5-f6a7-8901-bcde-f12345678901"
+                    user_id: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+                    date: "2026-03-25"
+                    reason_category: "busy"
+                    reason_text: "Had back-to-back meetings until 9 PM"
+                    grace_freeze_used: false
+                    created_at: "2026-03-25T21:30:00.000Z"
+                  supportive_message: "Busy days happen. Your 14-day streak is still intact -- it pauses, never resets. Tomorrow is a fresh start."
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          description: Habit not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/v1/habits/{id}/logs:
+    get:
+      tags: [Habits]
+      summary: Get habit completion logs
+      operationId: getHabitLogs
+      description: |
+        Returns an array of daily log entries for a specific habit over a date range.
+        Each entry includes completion status, verification source, and optional
+        reflection data. Used for rendering heatmaps and progress charts.
+
+        If no log exists for a date within the range, that date is included with
+        `completed: false` and null fields. This ensures the Flutter client always
+        gets a contiguous array of dates.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: UUID of the habit.
+          schema:
+            type: string
+            format: uuid
+        - name: range
+          in: query
+          required: false
+          description: Time range for logs. Defaults to "week" (last 7 days).
+          schema:
+            type: string
+            enum: [week, month]
+            default: week
+          example: month
+      responses:
+        "200":
+          description: Array of daily log entries.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: ["ok"]
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/HabitLog"
+              example:
+                status: "ok"
+                data:
+                  - id: "e5f6a7b8-c9d0-1234-ef01-23456789abcd"
+                    habit_id: "b2c3d4e5-f6a7-8901-bcde-f12345678901"
+                    user_id: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+                    date: "2026-03-25"
+                    completed: true
+                    verification_source: "manual"
+                    proof_url: null
+                    reflection_difficulty: 3
+                    reflection_text: "Not too bad today"
+                    completed_at: "2026-03-25T14:30:00.000Z"
+                    created_at: "2026-03-25T14:30:00.000Z"
+                  - id: null
+                    habit_id: "b2c3d4e5-f6a7-8901-bcde-f12345678901"
+                    user_id: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+                    date: "2026-03-24"
+                    completed: true
