@@ -1,0 +1,160 @@
+// Copyright 2023 Fries_I23
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+// coverage:ignore-file
+
+import 'dart:ui' show Color, Locale;
+
+import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart' show Icons;
+import 'package:flutter/widgets.dart' show LocalizationsDelegate;
+import 'package:flutter_localizations/flutter_localizations.dart';
+
+import '../l10n/localizations.dart';
+import '../models/app_reminder_config.dart';
+import '../models/habit_display.dart';
+import '../models/habit_form.dart';
+import '../theme/color.dart';
+import 'enums.dart';
+
+const String appID = "a1b2c3d4-e5f6-7890-abcd-ef1234567890";
+const String appName = "Valence";
+const String appDBName = "valence.db";
+const String aboutInfoFilePath = "configs/about_info.json";
+const String debuggerLogFileName = "app_debug.log";
+const String debuggerInfoFileName = "debug.txt";
+const String debuggerZipFile = "debug.zip";
+/// # Sqlite versions
+///
+/// ## version 1
+/// - init databases
+/// ## verion 2
+/// - add record reason column
+/// ## version 3
+/// - add daily goal extra column
+const int appDBVersion = 3;
+//#endregion
+
+//#region app-theme
+const Color appDefaultThemeMainColor = Color(0xFF006493);
+const AppThemeType appDefaultThemeType = AppThemeType.followSystem;
+const int appCalendarBarMaxOccupyPrt = 70;
+const int appCalendarBarMinOccupyPrt = 20;
+const int appCalendarBarDefualtOccupyPrt = 50;
+const int kHabitLargeScreenAdaptWidth = 600;
+const int kHabitLargeScreenAdaptHeight = 400;
+//#endregion
+
+//#region l10n
+const appSupportedLocales = [
+  Locale.fromSubtags(languageCode: 'en'),
+];
+
+const appLocalizationsDelegates = <LocalizationsDelegate>[
+  L10n.delegate,
+  GlobalMaterialLocalizations.delegate,
+  GlobalWidgetsLocalizations.delegate,
+  GlobalCupertinoLocalizations.delegate,
+];
+//#endregion
+
+//#region app-setting
+const defaultSortType = HabitDisplaySortType.manual;
+const defaultSortDirection = HabitDisplaySortDirection.asc;
+const defaultHabitsRecordScrollBehavior = HabitsRecordScrollBehavior.scrollable;
+const defaultFirstDay = DateTime.monday;
+const defaultAppReminder = AppReminderConfig.off;
+//#endregion
+
+//#region habit-field
+const defaultHabitType = HabitType.normal;
+const defaultHabitColorType = HabitColorType.cc1;
+
+const defaultHabitDailyGoal = 1;
+const defaultNegativeHabitDailyGoal = 0;
+const minHabitDailyGoal = 0;
+const maxHabitdailyGoal = 10000000;
+const maxHabitdailyGoalExtra = 50000000;
+
+const defaultHabitDailyGoalUnit = '';
+const minHabitDailyGoalUnitLength = 0;
+const maxHabitDailyGoalUnitLength = 16;
+
+const defaultHabitTargetDays = 66;
+const defaultHabitCustomTargetDays = 365;
+const minHabitTargetDays = 7;
+const maxHabitTargetDays = 999;
+
+const onSecondMS = 1000;
+const oneDaySeconds = 24 * 3600;
+const oneDayMilliseconds = oneDaySeconds * onSecondMS;
+// Unix timestamp: 2000/01/01
+const minHabitSecondsSinceEpoch = 946656000;
+const minHabitMillisecondsSinceEpoch = minHabitSecondsSinceEpoch * onSecondMS;
+// Unix timestamp: 2070/12/31
+const maxHabitSecondsSinceEpoch = 3187180800;
+const maxHabitMillisecondsSinceEpoch = maxHabitSecondsSinceEpoch * onSecondMS;
+
+const defaultFrequencyPreWeekFreq = 3;
+const defaultFrequencyPreMonthFreq = 10;
+const defaultFrequencyCustomFreq = 2;
+const defaultFrequencyCustomDays = 5;
+const maxFrequencyValue = 99;
+
+const maxRecordReasonTextLenth = 100;
+
+const loadedHabitStatus = <HabitStatus>[
+  HabitStatus.activated,
+  HabitStatus.archived,
+];
+
+const sortPositionConflictIncreaseStep = 0.000001;
+const sortPositionConflictDecimalPlaces = 6;
+//#endregion
+
+//#region common
+const minTimeOfDayInt = 0;
+const maxTimeOfDayInt = 1440;
+
+const appFlavorDev = 'f_dev';
+const appFlavorGeneric = 'f_generic';
+const appFlaborStore = 'f_store';
+//#endregion
+
+//#region components
+const double dialogshowTitleMaxHeight = 400.0;
+
+const skipReasonChipTextList = [
+  '☕',
+  '🛌',
+  '🍔',
+  '💤',
+  '📱',
+  '🍹',
+  '🏝️',
+  '😍',
+  '😃',
+  '😕',
+  '😠',
+];
+
+const kRecordAutoMarkStatusIcon = Icons.done_outline;
+const kRecordUnknownStatusIcon = Icons.question_mark_outlined;
+const kRecordSkipStatusIcon = Icons.remove_outlined;
+const kRecordDoneStatusIcon = Icons.check_outlined;
+const kRecordZeroStatusIcon = Icons.close_sharp;
+//#endregion
+
+//#region other
+const chinaICPFillingNumber = "浙ICP备2024100574号-2A";
+//#endregion
