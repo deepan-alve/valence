@@ -1,2 +1,11 @@
 .env
 .direnv
+.gstack/
+node_modules/
+firebase-service-account.json
+server/uploads/
+server/dist/
+server/drizzle/
+*.log
+PRD/valence-958c2-firebase-adminsdk-fbsvc-d161acacef.json
+PRD/client_secret_*.json
