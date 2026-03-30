@@ -326,12 +326,12 @@ class PersonalityCopy {
   /// Last week's MVP card.
   String lastWeekMvp(String name) {
     if (!personalityOn) return 'Last week\'s #1: $name';
-    return 'Last week\'s MVP: $name 👑 bow down';
+    return 'Last week\'s MVP: $name 👑 show them some love';
   }
 
   /// Leaderboard baseline caption.
   String get leaderboardCaption {
     if (!personalityOn) return 'Based on each member\'s personal baseline';
-    return 'Based on YOUR baseline — so no excuses 😤📈';
+    return 'Based on YOUR baseline — every point is earned, not given 📈';
   }
 }

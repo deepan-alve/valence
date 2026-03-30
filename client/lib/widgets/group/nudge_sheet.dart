@@ -189,12 +189,12 @@ class NudgeSheet extends StatelessWidget {
                   ? null
                   : () {
                       groupProvider.sendNudge(memberId);
-                      Navigator.of(context).pop();
                       ValenceToast.show(
                         context,
                         message: copy.nudgeSentToast(memberName),
                         type: ToastType.success,
                       );
+                      Navigator.of(context).pop();
                     },
             ),
             const SizedBox(height: ValenceSpacing.sm),

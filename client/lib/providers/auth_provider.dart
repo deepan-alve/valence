@@ -1,4 +1,5 @@
 // client/lib/providers/auth_provider.dart
+import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:valence/services/auth_service.dart';
@@ -14,6 +15,8 @@ class AuthProvider extends ChangeNotifier {
   bool _firebaseAvailable = false;
   String? _error;
   bool _loading = false;
+  StreamSubscription<User?>? _authSubscription;
+  bool _initialized = false;
 
   AuthProvider({AuthService? authService})
       : _authService = authService ?? AuthService();
@@ -27,7 +30,11 @@ class AuthProvider extends ChangeNotifier {
   String get displayName => _user?.displayName ?? 'Friend';
 
   /// Initialize Firebase and listen to auth state changes.
+  /// Safe to call multiple times — subsequent calls are no-ops.
   Future<void> initialize() async {
+    if (_initialized) return;
+    _initialized = true;
+
     _firebaseAvailable = await _authService.initialize();
 
     if (_firebaseAvailable) {
@@ -41,8 +48,8 @@ class AuthProvider extends ChangeNotifier {
       }
       notifyListeners();
 
-      // Then listen for future changes
-      _authService.authStateChanges.listen((user) {
+      // Then listen for future changes — store subscription for cleanup
+      _authSubscription = _authService.authStateChanges.listen((user) {
         _user = user;
         _status = user != null
             ? AuthStatus.authenticated
@@ -54,6 +61,12 @@ class AuthProvider extends ChangeNotifier {
       _status = AuthStatus.unauthenticated;
       notifyListeners();
     }
+  }
+
+  @override
+  void dispose() {
+    _authSubscription?.cancel();
+    super.dispose();
   }
 
   Future<bool> signInWithGoogle() async {

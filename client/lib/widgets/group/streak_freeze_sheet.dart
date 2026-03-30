@@ -188,12 +188,12 @@ class StreakFreezeSheet extends StatelessWidget {
                   ? null
                   : () {
                       groupProvider.useStreakFreeze();
-                      Navigator.of(context).pop();
                       ValenceToast.show(
                         context,
                         message: copy.freezeActivatedToast,
                         type: ToastType.success,
                       );
+                      Navigator.of(context).pop();
                     },
             ),
             const SizedBox(height: ValenceSpacing.sm),

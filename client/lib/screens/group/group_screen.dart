@@ -280,7 +280,7 @@ class _GroupScreenBodyState extends State<_GroupScreenBody> {
                   period: groupProvider.leaderboardPeriod,
                   onPeriodChanged: (p) =>
                       context.read<GroupProvider>().setLeaderboardPeriod(p),
-                  baselineCaption: 'Based on your personal consistency',
+                  baselineCaption: copy.leaderboardCaption,
                   tokens: tokens,
                 ),
               ),
