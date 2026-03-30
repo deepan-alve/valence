@@ -159,7 +159,7 @@ Each habit gets one of these colors. They're vibrant in both themes. On dark the
 | Level | Light Theme | Dark Theme |
 |-------|-------------|------------|
 | 0 (flat) | No shadow | No border |
-| 1 (card) | 0 2px 8px rgba(0,0,0,0.06) | 1px border surface.border |
+| 1 (card) | 0 2px 8px rgba(0,0,0,0.06) | 1px border border.default |
 | 2 (elevated) | 0 4px 16px rgba(0,0,0,0.10) | 1px border + subtle inner glow |
 | 3 (modal) | 0 8px 32px rgba(0,0,0,0.16) | 2px border + ambient glow |
 | 4 (overlay) | 0 16px 48px rgba(0,0,0,0.24) | Background dim + card glow |
@@ -199,7 +199,7 @@ Each habit gets one of these colors. They're vibrant in both themes. On dark the
 
 ## 2. Screen-by-Screen Design
 
-### 2.0 Onboarding (4 screens + setup flow)
+### 2.0 Onboarding (7 screens)
 
 **Screen 1 — Splash/Welcome:**
 - Full-bleed accent.primary background (blue for light, amber for dark)
@@ -248,6 +248,13 @@ Each habit gets one of these colors. They're vibrant in both themes. On dark the
   - "Go Solo for Now" → subtle text link (not a button, de-emphasized)
 - If creating: share sheet opens with invite link after creation
 
+**Screen 7 — Notification Permission:**
+- Mascot with bell illustration
+- "Stay in the loop"
+- Bullet points: Friend nudges, Morning motivation, Streak milestones
+- "Enable Notifications" primary button → system permission dialog
+- "Maybe Later" text link
+
 ### 2.1 Home Screen (Tab 1)
 
 **Top section:**
@@ -266,7 +273,11 @@ Each habit gets one of these colors. They're vibrant in both themes. On dark the
 **Week day selector:**
 - Horizontal scroll of 7 days (Mon-Sun)
 - Current day highlighted with accent.primary circle fill
-- Past days show: green dot (all done), amber dot (partial), red dot (missed), gray (future)
+- Past days show status via color AND icon (never color alone for accessibility):
+  - All done: green dot + small ✓ icon
+  - Partial: amber dot + small "~" icon
+  - Missed: red dot + small ✗ icon
+  - Future: gray, no icon
 - Tapping a past day shows that day's completion status
 
 **Habit cards (main content — scrollable):**
@@ -274,13 +285,25 @@ Each habit gets one of these colors. They're vibrant in both themes. On dark the
 - Each card:
   - Habit color as left border (dark) or light wash background (light)
   - Habit icon (from Phosphor set) top-left
-  - Completion circle/checkbox top-right
+  - Completion circle/checkbox top-right (always tappable — this is THE completion action)
   - Habit name (H3 Obviously)
   - Subtitle: goal text ("Read 20 pages", "Solve 1 problem")
   - If plugin-tracked: small "Auto" badge with plugin icon
   - If completed: checkmark animation plays, card fades to success state
-  - If has redirect link: tapping the card opens the deep link, long-press marks complete
-  - If manual: tapping the card marks complete
+
+**Gesture matrix (consistent across all habit types):**
+
+| Gesture | Manual | Manual+Photo | Plugin | Redirect |
+|---------|--------|-------------|--------|----------|
+| Tap checkbox (top-right) | Marks complete | Opens photo proof sheet | Disabled ("Auto-tracked") | Marks complete |
+| Tap card body | Opens habit detail | Opens habit detail | Opens habit detail | Opens redirect URL (deep link) |
+| Long-press card | Opens habit detail | Opens habit detail | Opens habit detail | Opens habit detail |
+| Swipe left | Quick archive | Quick archive | Quick archive | Quick archive |
+
+- The **checkbox** is always the completion action. The **card body** is always navigation (detail or redirect).
+- Plugin-tracked habits: checkbox shows a lock icon with "Auto" label — not tappable. Completion happens via plugin poll.
+- Redirect habits: card body opens the external URL. Checkbox is separate and always visible for manual override.
+- After returning from a redirect URL: no "Did you complete it?" prompt. User taps the checkbox when ready.
 
 **Group streak chain (below habits):**
 - Horizontal chain visualization
@@ -306,23 +329,28 @@ Each habit gets one of these colors. They're vibrant in both themes. On dark the
 
 **Member status grid:**
 - Horizontal scrollable row of member avatars
-- Each avatar:
-  - Green ring = all habits done today
-  - Amber ring = partial
-  - Gray ring = not started
-  - Small number badge showing X/Y habits done
+- Each avatar (color + icon for accessibility — never color alone):
+  - Green ring + ✓ badge = all habits done today
+  - Amber ring + number badge (e.g., "3/5") = partial
+  - Gray ring + "–" badge = not started
+  - 💤 badge = inactive (3+ days no activity)
 - Tapping a member shows their habit list (respecting visibility settings — minimal shows only done/not done)
 
-**Action buttons (below member grid):**
-- "Nudge" button — enabled only when user has completed all their habits. Disabled state shows "Complete your habits first"
+**Per-member actions (on each member avatar or in member detail):**
+- "Nudge" icon-button — appears on incomplete members only. Enabled only when user has completed all their own habits. Disabled state tooltip: "Complete your habits first."
+- "Kudos" icon-button — appears on completed members only. One-tap, no text required.
+- Nudge and Kudos are **per-member**, not global buttons.
+
+**Group-level actions (below member grid):**
 - "Streak Freeze" button — shows consistency points balance. Tapping confirms spending points.
-- "Kudos" — contextual, appears next to completed member's entry in feed
+- "Invite" button — share invite link/QR
 
 **Group feed (main scrollable content):**
 - Reverse chronological timeline
 - Feed item types:
   - Completion: "[Avatar] [Name] completed [Habit Name] ✓" + "Verified via LeetCode" badge if plugin + kudos button
-  - Nudge: "[Name] nudged [Name]: '[LLM message]'"
+  - Miss (supportive): "[Name] had a tough day. Send them some support?" + kudos button. (Framing is supportive, not punitive. Only shown if habit visibility is Full.)
+  - Nudge: "[Name] nudged [Name] 💪" (LLM-generated message is private — only the receiver sees the full text via push notification. Feed shows only that the nudge happened, to protect privacy since nudges are built from personal reflection/stress data.)
   - Kudos: "[Name] sent kudos to [Name]"
   - Status+Norm: "🔥 Nitil is on a 7-day streak!" followed by "Most of your group is staying consistent this week."
   - Chain link: "Today's link: 🥇 Gold! Everyone showed up." or "Silver link — 4/5 completed." or "Broken link today."
@@ -331,10 +359,13 @@ Each habit gets one of these colors. They're vibrant in both themes. On dark the
 - Minimal visibility habits show: "[Name] completed a habit ✓" (no habit name)
 
 **Weekly leaderboard (collapsible section):**
-- Rank | Avatar | Name | Contribution Score | Bar chart
-- "Based on your personal consistency, not raw output" caption
+- Primary metric: **% of personal baseline** (not raw score). Each member's progress is normalized against their own historical average — a beginner completing 3/3 habits at 100% ranks equally with an expert completing 8/8 at 100%.
+- Display: Rank | Avatar | Name | Consistency % (large) | Bar chart (% fill)
+- Tapping a row expands to show raw contribution breakdown (see 2.30)
 - Week/Month toggle tabs
+- Previous weeks viewable via horizontal swipe (archived scores)
 - Tied ranks allowed, shown equally
+- Monday morning: brief "Last week's MVP" card at top showing #1 from previous week
 
 ### 2.3 Progress Screen (Tab 3)
 
@@ -463,9 +494,8 @@ Opened by long-pressing a habit card or tapping "details."
 - If missed: reason shown
 
 **Actions:**
-- Archive habit
-- Delete habit (with confirmation)
-- Share habit stats
+- Archive habit (with confirmation: "Archive [Habit]? Your streak will be preserved but paused. You can unarchive later." This answers PRD open question 12.1.)
+- Share habit stats (generates shareable card — see 2.16 streak milestone format)
 
 ### 2.7 Habit Create/Edit (Bottom Sheet / Full Screen)
 
@@ -479,29 +509,35 @@ Opened by long-pressing a habit card or tapping "details."
   - Tracking: Manual / Auto (toggle)
     - If Auto: plugin selector dropdown → auth flow
   - Redirect URL (optional text input, with "Test Link" button)
-  - Frequency: Every day / Custom days (day-of-week checkboxes)
-  - Visibility: Full / Minimal (toggle with explanation text)
-  - Reminder time (time picker, optional)
+  - Visibility: Full / Minimal (toggle with explanation text: "Minimal: group only sees done/not done, not the habit name")
 - Save button (accent.primary, full width)
-- Cancel / Delete (if editing)
+- Cancel / Archive (if editing — no hard delete, only archive per PRD)
+
+**Note:** Habits are always daily. No custom frequency — PRD defines "perfect day" and group chain as "all active habits today." Custom days would break this math.
 
 ### 2.8 Nudge Flow (Within Group Screen)
 
-1. User taps "Nudge" button next to an incomplete member
+1. User taps "Nudge" icon on an incomplete member's avatar in the member grid
 2. Bottom sheet appears: "Nudge [Name]?"
-3. Shows LLM-generated preview message (editable? or fixed — PRD says LLM generates it)
+3. Shows LLM-generated preview message (read-only — user cannot edit. PRD specifies LLM generates context-aware messages from private data; allowing edits would defeat the purpose.)
 4. "Send Nudge" button
 5. Sent confirmation: brief toast + fly-out animation
 6. Rate limited: if already nudged this person today, button shows "Already nudged today"
 
 ### 2.9 Evening Reflection (Push Notification → In-App)
 
-- Push notification at 21:00 local: "How was today? Quick check-in."
-- Opens a minimal bottom sheet:
-  - "How difficult were today's habits?" — 5 emoji faces (1=easy to 5=very hard)
-  - One-line text input: "Anything on your mind?" (optional)
-  - "Done" button
-- Frictionless: one tap + optional text, < 10 seconds
+**Unlocks at Foundation stage (10 days) per habit.** Habits that haven't reached Foundation don't prompt reflection. This is a PRD-defined unlock — not available from day 1.
+
+- Push notification at 21:00 local: "Quick reflection on today's habits?"
+- Opens a minimal bottom sheet with **per-habit reflection** (stored per HabitLog, not per day):
+  - For each Foundation+ habit completed today:
+    - Habit name + color chip
+    - "How difficult?" — 5 labeled faces: Easy (1), Okay (2), Moderate (3), Hard (4), Brutal (5). Labels visible for accessibility (not emoji-only).
+    - One-line text input: "Anything on your mind?" (optional)
+  - If multiple habits: vertically stacked, scrollable. Each habit is independent.
+  - "Done" button at bottom
+- Frictionless: one tap per habit + optional text, < 15 seconds total
+- If no habits have reached Foundation yet: no reflection prompt sent
 
 ### 2.10 Miss Logging (Triggered when day ends incomplete)
 
@@ -602,20 +638,15 @@ When a habit uses "Manual + Photo" tracking method:
 When a habit has a redirect URL configured:
 
 **Home screen habit card:**
-- Shows a small "Open" arrow/icon badge on the card (distinguished from the completion checkbox)
-- Card tap behavior changes:
-  - **Single tap:** Opens the redirect URL (deep-link into target app)
-  - **Long press:** Opens habit detail sheet
-  - **Checkbox tap (top-right):** Marks complete directly without opening link
+- Shows a small "→" arrow badge on the card body (distinguished from the checkbox)
+- Follows the gesture matrix from 2.1: card body tap opens the redirect URL, checkbox marks complete
 
 **Redirect flow:**
-1. Tap card → brief loading indicator (200ms)
+1. Tap card body → brief loading indicator (200ms)
 2. App launches external URL (LeetCode, Kindle, Spotify, etc.)
-3. When user returns to Valence (via back gesture or app switch):
-   - If plugin-tracked: automatic — no prompt needed
-   - If manual-tracked: bottom sheet slides up: "Did you complete [Habit Name]?" with "Yes, done!" / "Not yet" buttons
-   - "Not yet" dismisses, user can complete later
-4. If user doesn't return within 2 hours: gentle push notification "Still working on [Habit]? Mark it done when you're ready."
+3. When user returns to Valence: no prompt. The checkbox is always available on the Home screen for when the user is ready to mark complete.
+4. If plugin-tracked: the plugin poller handles completion automatically — no user action needed.
+5. If user doesn't return within 2 hours and habit is still incomplete: gentle push notification "Still working on [Habit]? Mark it done when you're ready."
 
 ### 2.16 XP/Sparks Earning Feedback
 
@@ -972,7 +1003,7 @@ AppTheme (Provider)
 │   ├── radii: ValenceRadii (border radius scale)
 │   └── elevation: ValenceElevation (shadow/glow per level)
 ├── ActiveThemeId (string — "nocturnal_sanctuary", "daybreak", etc.)
-└── UserEquipped (flame, animation, card_style, font, pattern)
+└── UserEquipped (flame, animation, card_style, font, pattern, app_icon)
 ```
 
 Every widget reads from `ValenceTokens` via `Theme.of(context).extension<ValenceTokens>()`. No hardcoded colors anywhere.
@@ -1085,7 +1116,67 @@ Modal routes (pushed on top):
 
 ---
 
-## 6. Accessibility
+## 6. Resolved Open Questions & Audit Fixes
+
+### 6.1 Product Name
+The product name is **Valence** (not "Valance" as misspelled in PRD v2.0). All UI copy uses "Valence."
+
+### 6.2 Consistency Points (The "Third Currency")
+Consistency points are NOT a third currency — they are a subset of the group accountability system, earned automatically:
+- **Earning:** +1 point for each day you complete all your habits while in a group. Tracked per group membership.
+- **Spending:** Points are spent on altruistic streak freezes (cost: 5 points per freeze).
+- **Stacking:** Max 1 freeze per group per day. If two members try to freeze the same day, the first one wins; the second gets "Freeze already active today."
+- **Visibility:** Points balance shown on the Streak Freeze button in Group screen (e.g., "❄️ 12 pts") and in Profile → Stats section.
+- **No earning animation** — points accrue silently. Users discover them when they need a freeze.
+
+### 6.3 Habit Archival (PRD Open Question 1)
+- Users CAN archive a habit mid-streak.
+- The streak is **preserved but paused** — it doesn't reset, and it doesn't increment.
+- Archived habits are **excluded** from perfect-day and group chain calculations immediately.
+- Archived habits appear in Profile → Archived Habits (collapsible) with their frozen streak visible.
+- Habits can be unarchived, and the streak resumes from where it paused.
+
+### 6.4 Max Habits Per User (PRD Open Question 3)
+- Cap: **10 active habits** per user. Prevents XP farming with trivial habits.
+- When user hits the cap: "Add Habit" shows "You've reached the maximum of 10 active habits. Archive one to add a new one."
+- Archived habits don't count against the cap.
+
+### 6.5 Group Timezone (Chain Calculation)
+- Each group has a **home timezone**, set to the admin's timezone at group creation.
+- The daily chain link calculation runs at 00:05 in the **group's home timezone**, not UTC.
+- Group screen shows: "Day resets at midnight [timezone]" in small caption below the chain.
+- Admin can change the group timezone in Group Settings.
+
+### 6.6 Tier Demotion
+When a group's streak breaks and falls below a tier threshold:
+- Feed item: "Your group dropped to [Tier]. Build the streak back to regain [lost perk]."
+- Tier badge updates immediately with a brief "deflate" animation (badge shrinks → re-appears at new tier).
+- Push notification to all members: "Your group's streak broke. You're back to [Tier]."
+- Lost perks are re-locked immediately.
+
+### 6.7 Flame Customization Gate
+Per PRD: flame styles unlock at the **Momentum** goal stage (21 days on a specific habit), NOT just by rank/sparks.
+- Shop flame items show an additional gate: "Requires: Any habit at Momentum (21 days)"
+- If no habit has reached Momentum: flames are grayed out with this label, even if user has enough Sparks and rank.
+- Once any habit hits Momentum, all flame styles become purchasable (the gate opens permanently).
+
+### 6.8 Group Below Minimum (3 Members)
+- If a group drops below 3 members (via leaving or removal):
+  - Group enters "Paused" state. Chain doesn't break but doesn't progress.
+  - Group screen shows banner: "Your group needs at least 3 members to track together. Invite friends to resume."
+  - Existing chain/streak data is preserved.
+  - Individual habit tracking continues normally.
+  - When 3rd member joins, group resumes automatically.
+
+### 6.9 LLM Fallback
+When the LLM is unavailable (rate limited, API down):
+- Nudge flow: shows a predefined template message instead of LLM-generated. Template pool of ~20 generic-but-supportive nudges. User sees: "Auto-generated nudge (AI is busy)" label.
+- Motivational stats: falls back to predefined template pool (already specified in 2.28).
+- Preemptive nudges: skipped silently — not critical enough to warrant a fallback notification.
+
+---
+
+## 7. Accessibility
 
 - All text meets WCAG 2.1 AA contrast ratios in both themes
 - Touch targets minimum 44x44px
