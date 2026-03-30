@@ -5,39 +5,10 @@ import 'package:valence/providers/onboarding_provider.dart';
 import 'package:valence/screens/onboarding/welcome_screen.dart';
 import 'package:valence/screens/onboarding/pitch_carousel.dart';
 import 'package:valence/screens/onboarding/theme_picker_screen.dart';
-
-// Placeholder screens for pages 4-7 (built in Tasks 9+)
-class _AuthPlaceholder extends StatelessWidget {
-  const _AuthPlaceholder();
-  @override
-  Widget build(BuildContext context) => const Scaffold(
-        body: Center(child: Text('Auth Screen — Task 9')),
-      );
-}
-
-class _HabitSetupPlaceholder extends StatelessWidget {
-  const _HabitSetupPlaceholder();
-  @override
-  Widget build(BuildContext context) => const Scaffold(
-        body: Center(child: Text('Habit Setup — Task 10')),
-      );
-}
-
-class _GroupSetupPlaceholder extends StatelessWidget {
-  const _GroupSetupPlaceholder();
-  @override
-  Widget build(BuildContext context) => const Scaffold(
-        body: Center(child: Text('Group Setup — Task 10')),
-      );
-}
-
-class _NotificationPlaceholder extends StatelessWidget {
-  const _NotificationPlaceholder();
-  @override
-  Widget build(BuildContext context) => const Scaffold(
-        body: Center(child: Text('Notification Permission — Task 11')),
-      );
-}
+import 'package:valence/screens/onboarding/auth_screen.dart';
+import 'package:valence/screens/onboarding/habit_setup_screen.dart';
+import 'package:valence/screens/onboarding/group_setup_screen.dart';
+import 'package:valence/screens/onboarding/notification_permission_screen.dart';
 
 /// Wraps the 7-screen onboarding flow in a PageView.
 /// Navigation is driven by OnboardingProvider — swipe is disabled.
@@ -45,13 +16,13 @@ class OnboardingFlow extends StatelessWidget {
   const OnboardingFlow({super.key});
 
   static const List<Widget> _pages = [
-    WelcomeScreen(),       // 0 — Welcome
-    PitchCarousel(),       // 1 — Pitch / value prop carousel
-    ThemePickerScreen(),   // 2 — Theme selection
-    _AuthPlaceholder(),    // 3 — Sign up / Login
-    _HabitSetupPlaceholder(), // 4 — Habit template picker
-    _GroupSetupPlaceholder(),  // 5 — Create / Join / Solo
-    _NotificationPlaceholder(), // 6 — Notification permission
+    WelcomeScreen(),                   // 0 — Welcome
+    PitchCarousel(),                   // 1 — Pitch / value prop carousel
+    ThemePickerScreen(),               // 2 — Theme selection
+    AuthScreen(),                      // 3 — Sign up / Login
+    HabitSetupScreen(),                // 4 — Habit template picker
+    GroupSetupScreen(),                // 5 — Create / Join / Solo
+    NotificationPermissionScreen(),    // 6 — Notification permission
   ];
 
   @override
