@@ -3,12 +3,15 @@ import 'package:provider/provider.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:valence/models/habit.dart';
 import 'package:valence/providers/home_provider.dart';
+import 'package:valence/providers/miss_log_provider.dart';
 import 'package:valence/theme/valence_radii.dart';
 import 'package:valence/theme/valence_spacing.dart';
 import 'package:valence/theme/valence_tokens.dart';
 import 'package:valence/widgets/habit/day_selector.dart';
 import 'package:valence/widgets/habit/habit_card.dart';
 import 'package:valence/widgets/group/chain_strip.dart';
+import 'package:valence/widgets/social/recovery_card.dart';
+import 'package:valence/widgets/social/miss_logging_sheet.dart';
 
 /// Home screen — greeting, daily progress, day selector, habits grid, chain strip.
 class HomeScreen extends StatelessWidget {
@@ -85,6 +88,27 @@ class _HomeScreenBody extends StatelessWidget {
                   ),
                 ),
 
+                // Recovery card — appears the day after a miss (spec 2.29)
+                Consumer<MissLogProvider>(
+                  builder: (context, missLog, _) {
+                    if (!missLog.showRecoveryCard) {
+                      return const SliverToBoxAdapter(child: SizedBox.shrink());
+                    }
+                    return SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: ValenceSpacing.md,
+                        ),
+                        child: RecoveryCard(
+                          consecutiveMissDays: missLog.consecutiveMissDays,
+                          onDismiss: missLog.dismissRecoveryCard,
+                          onLetSGo: missLog.dismissRecoveryCard,
+                        ),
+                      ),
+                    );
+                  },
+                ),
+
                 // --- Section label ---
                 SliverToBoxAdapter(
                   child: Padding(
@@ -131,6 +155,15 @@ class _HomeScreenBody extends StatelessWidget {
                             );
                           },
                           onComplete: () => home.toggleHabit(habit.id),
+                          // Demo trigger: long-press an incomplete habit to show miss logging sheet
+                          onLongPress: habit.isCompleted
+                              ? null
+                              : () => MissLoggingSheet.show(
+                                    context,
+                                    habitId: habit.id,
+                                    habitName: habit.name,
+                                    onDone: () {},
+                                  ),
                         );
                       },
                       childCount: home.habits.length,
