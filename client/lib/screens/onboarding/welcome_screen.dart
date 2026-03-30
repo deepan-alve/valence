@@ -5,8 +5,6 @@ import 'package:provider/provider.dart';
 import 'package:valence/providers/onboarding_provider.dart';
 import 'package:valence/theme/valence_tokens.dart';
 import 'package:valence/theme/valence_spacing.dart';
-import 'package:valence/widgets/core/valence_button.dart';
-
 /// Screen 1 of onboarding — full-bleed accent.primary welcome splash.
 class WelcomeScreen extends StatelessWidget {
   const WelcomeScreen({super.key});
