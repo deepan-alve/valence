@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:provider/provider.dart';
 import 'package:valence/providers/group_provider.dart';
+import 'package:valence/services/llm_nudge_service.dart';
 import 'package:valence/theme/valence_spacing.dart';
 import 'package:valence/theme/valence_tokens.dart';
 import 'package:valence/widgets/core/valence_button.dart';
@@ -10,16 +11,13 @@ import 'package:valence/widgets/shared/valence_toast.dart';
 /// Bottom sheet shown when a user taps nudge on a group member.
 ///
 /// Shows a personality-aware header, an LLM-generated preview message
-/// (read-only mock), and send/cancel actions.
+/// (read-only), and send/cancel actions.
 ///
 /// Usage:
 /// ```dart
-/// showModalBottomSheet(
-///   context: context,
-///   builder: (_) => NudgeSheet(memberId: 'u4', memberName: 'Ravi'),
-/// );
+/// NudgeSheet.show(context, memberId: 'u4', memberName: 'Ravi');
 /// ```
-class NudgeSheet extends StatelessWidget {
+class NudgeSheet extends StatefulWidget {
   final String memberId;
   final String memberName;
 
@@ -44,6 +42,36 @@ class NudgeSheet extends StatelessWidget {
   }
 
   @override
+  State<NudgeSheet> createState() => _NudgeSheetState();
+}
+
+class _NudgeSheetState extends State<NudgeSheet> {
+  final _llmService = LlmNudgeService();
+  String? _nudgeMessage;
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadMessage();
+  }
+
+  Future<void> _loadMessage() async {
+    final msg = await _llmService.generateNudgeMessage(
+      receiverName: widget.memberName,
+      habitName: 'their habit',
+      streakDays: 0,
+      recentMissReasons: [],
+    );
+    if (mounted) {
+      setState(() {
+        _nudgeMessage = '"$msg"';
+        _loading = false;
+      });
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     final tokens = context.tokens;
     final colors = tokens.colors;
@@ -51,12 +79,7 @@ class NudgeSheet extends StatelessWidget {
     final groupProvider = context.read<GroupProvider>();
     final copy = groupProvider.copy;
 
-    final alreadyNudged = groupProvider.hasNudgedToday(memberId);
-
-    // Mock LLM-generated nudge preview message.
-    const _nudgePreview =
-        '"Hey, your squad needs you today. Even one habit counts — '
-        'let\'s keep the chain going together! 💪"';
+    final alreadyNudged = groupProvider.hasNudgedToday(widget.memberId);
 
     return SafeArea(
       child: Container(
@@ -100,7 +123,7 @@ class NudgeSheet extends StatelessWidget {
                 const SizedBox(width: ValenceSpacing.sm),
                 Expanded(
                   child: Text(
-                    copy.nudgeSheetTitle(memberName),
+                    copy.nudgeSheetTitle(widget.memberName),
                     style: typography.h2.copyWith(color: colors.textPrimary),
                   ),
                 ),
@@ -110,7 +133,7 @@ class NudgeSheet extends StatelessWidget {
 
             // Body copy
             Text(
-              copy.nudgeSheetBody(memberName),
+              copy.nudgeSheetBody(widget.memberName),
               style: typography.body.copyWith(color: colors.textSecondary),
             ),
             const SizedBox(height: ValenceSpacing.md),
@@ -136,7 +159,7 @@ class NudgeSheet extends StatelessWidget {
                       ),
                       const SizedBox(width: 4),
                       Text(
-                        'AI-generated message (private to ${memberName})',
+                        'AI-generated message (private to ${widget.memberName})',
                         style: typography.overline.copyWith(
                           color: colors.accentSecondary,
                         ),
@@ -144,16 +167,55 @@ class NudgeSheet extends StatelessWidget {
                     ],
                   ),
                   const SizedBox(height: ValenceSpacing.sm),
-                  Text(
-                    _nudgePreview,
-                    style: typography.body.copyWith(
-                      color: colors.textPrimary,
-                      fontStyle: FontStyle.italic,
+                  if (_loading)
+                    Container(
+                      height: 60,
+                      decoration: BoxDecoration(
+                        color: colors.surfaceSunken,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Center(
+                        child: SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: colors.accentPrimary,
+                          ),
+                        ),
+                      ),
+                    )
+                  else
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: colors.surfaceSunken,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            _nudgeMessage ?? '',
+                            style: tokens.typography.body.copyWith(
+                              color: colors.textPrimary,
+                              fontStyle: FontStyle.italic,
+                            ),
+                          ),
+                        ),
+                        if (_llmService.lastCallWasFallback) ...[
+                          const SizedBox(height: 4),
+                          Text(
+                            'Auto-generated nudge (AI is busy)',
+                            style: tokens.typography.caption
+                                .copyWith(color: colors.textSecondary),
+                          ),
+                        ],
+                      ],
                     ),
-                  ),
                   const SizedBox(height: ValenceSpacing.xs),
                   Text(
-                    'Only ${memberName} will see this',
+                    'Only ${widget.memberName} will see this',
                     style: typography.caption.copyWith(color: colors.textSecondary),
                   ),
                 ],
@@ -188,10 +250,10 @@ class NudgeSheet extends StatelessWidget {
               onPressed: alreadyNudged
                   ? null
                   : () {
-                      groupProvider.sendNudge(memberId);
+                      groupProvider.sendNudge(widget.memberId);
                       ValenceToast.show(
                         context,
-                        message: copy.nudgeSentToast(memberName),
+                        message: copy.nudgeSentToast(widget.memberName),
                         type: ToastType.success,
                       );
                       Navigator.of(context).pop();
