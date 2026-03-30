@@ -1,7 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:valence/models/habit.dart';
 import 'package:valence/models/group_streak.dart';
+import 'package:valence/models/user_profile.dart';
 import 'package:valence/utils/constants.dart';
+
+/// Reward awarded when a habit is completed.
+class HabitReward {
+  final int xp;
+  final int sparks;
+  final bool isPerfectDayBonus;
+  const HabitReward({
+    required this.xp,
+    required this.sparks,
+    this.isPerfectDayBonus = false,
+  });
+}
 
 /// Manages home screen state: habits, daily progress, selected day, group streak.
 /// Uses mock data until the API service layer is built (Phase 7+).
@@ -10,6 +23,15 @@ class HomeProvider extends ChangeNotifier {
   DateTime _selectedDay = DateTime.now();
   late GroupStreak _groupStreak;
   final String _userName = 'Diana';
+
+  // XP / Sparks session state
+  int _sessionXp = 0;
+  int _sessionSparks = 0;
+  HabitReward? _lastReward;
+  bool _perfectDayBonusAwarded = false;
+
+  // Persona-driven subtitle
+  PersonaType _personaType = PersonaType.general;
 
   HomeProvider() {
     _habits = _mockHabits();
@@ -27,6 +49,15 @@ class HomeProvider extends ChangeNotifier {
   int get totalCount => _habits.length;
   double get progress => totalCount == 0 ? 0 : completedCount / totalCount;
   bool get isPerfectDay => completedCount == totalCount && totalCount > 0;
+
+  /// Session XP earned today.
+  int get sessionXp => _sessionXp;
+
+  /// Session Sparks earned today.
+  int get sessionSparks => _sessionSparks;
+
+  /// The most recently awarded reward (null after clearLastReward).
+  HabitReward? get lastReward => _lastReward;
 
   /// Current streak across all habits (max streak in the set).
   int get currentStreak => _groupStreak.currentStreak;
@@ -51,15 +82,43 @@ class HomeProvider extends ChangeNotifier {
     return '$timeGreeting, $_userName';
   }
 
-  /// Persona-driven motivational subtitle (mock: General persona).
+  /// Persona-driven motivational subtitle.
   String get subtitle {
-    if (isPerfectDay) {
-      return 'Perfect day! All $totalCount habits crushed.';
-    }
-    if (completedCount == 0) {
-      return 'Fresh start. $totalCount habits waiting for you.';
-    }
+    if (isPerfectDay) return 'Perfect day! All $totalCount habits crushed. 🔥';
+
+    return switch (_personaType) {
+      PersonaType.socialiser => _socialiserSubtitle(),
+      PersonaType.achiever => _achieverSubtitle(),
+      PersonaType.general => _generalSubtitle(),
+    };
+  }
+
+  String _socialiserSubtitle() {
     final remaining = totalCount - completedCount;
+    if (completedCount == 0) {
+      return 'Your group is watching. $totalCount habits to show up for today.';
+    }
+    if (remaining == 1) {
+      return '$completedCount done. 1 more habit to secure today\'s chain link.';
+    }
+    return '$completedCount/$totalCount done. $remaining more to keep the group streak alive.';
+  }
+
+  String _achieverSubtitle() {
+    final remaining = totalCount - completedCount;
+    if (completedCount == 0) {
+      return 'Day ${currentStreak + 1} starts now. $totalCount habits on deck.';
+    }
+    if (remaining == 0) {
+      return 'Stats: $_sessionXp XP earned today. Perfect pace.';
+    }
+    return '$completedCount/$totalCount habits · $_sessionXp XP today · $remaining remaining';
+  }
+
+  String _generalSubtitle() {
+    final remaining = totalCount - completedCount;
+    if (completedCount == 0) return 'Fresh start. $totalCount habits waiting for you.';
+    if (remaining == 1) return '$completedCount done. Just 1 more for a perfect day.';
     return '$completedCount/$totalCount habits done. $remaining more for a perfect day.';
   }
 
@@ -75,7 +134,21 @@ class HomeProvider extends ChangeNotifier {
 
   // --- Actions ---
 
+  /// Update the persona type (called by ChangeNotifierProxyProvider from ProfileProvider).
+  void setPersonaType(PersonaType type) {
+    if (_personaType == type) return;
+    _personaType = type;
+    notifyListeners();
+  }
+
+  /// Clear the last reward after showing the toast so it doesn't re-show.
+  void clearLastReward() {
+    _lastReward = null;
+    notifyListeners();
+  }
+
   /// Toggle completion for a habit. Plugin habits cannot be toggled manually.
+  /// Awards XP and Sparks when completing; no deduction on un-completing.
   void toggleHabit(String habitId) {
     final index = _habits.indexWhere((h) => h.id == habitId);
     if (index == -1) return;
@@ -84,12 +157,74 @@ class HomeProvider extends ChangeNotifier {
     // Plugin habits are auto-tracked --- cannot be toggled manually
     if (habit.isPlugin) return;
 
-    _habits[index] = habit.copyWith(isCompleted: !habit.isCompleted);
+    final wasCompleted = habit.isCompleted;
+    _habits[index] = habit.copyWith(isCompleted: !wasCompleted);
+
+    if (!wasCompleted) {
+      // Completing — award XP/Sparks
+      final baseXp = _xpForIntensity(habit.intensity);
+      var totalXp = baseXp;
+      var totalSparks = baseXp; // same amount as XP
+      var isPerfectDayBonus = false;
+
+      // Check perfect day bonus after the toggle
+      if (isPerfectDay && !_perfectDayBonusAwarded) {
+        totalXp += 25;
+        totalSparks += 25;
+        _perfectDayBonusAwarded = true;
+        isPerfectDayBonus = true;
+      }
+
+      _sessionXp += totalXp;
+      _sessionSparks += totalSparks;
+      _lastReward = HabitReward(
+        xp: totalXp,
+        sparks: totalSparks,
+        isPerfectDayBonus: isPerfectDayBonus,
+      );
+    } else {
+      // Un-completing — no deduction in real app (can't un-earn XP in production)
+      _lastReward = null;
+    }
+
     notifyListeners();
   }
 
   /// Toggle completion for a habit (alias for toggleHabit).
   void toggleHabitCompletion(String habitId) => toggleHabit(habitId);
+
+  /// Toggle the visibility of a habit between full and minimal (PRD 5.3.5).
+  void toggleHabitVisibility(String habitId) {
+    final index = _habits.indexWhere((h) => h.id == habitId);
+    if (index == -1) return;
+    final habit = _habits[index];
+    _habits[index] = habit.copyWith(
+      visibility: habit.visibility == HabitVisibility.full
+          ? HabitVisibility.minimal
+          : HabitVisibility.full,
+    );
+    notifyListeners();
+  }
+
+  /// Add a new habit. Called from HabitFormScreen.
+  void addHabit(Habit habit) {
+    _habits.add(habit);
+    notifyListeners();
+  }
+
+  /// Update an existing habit (edit flow).
+  void updateHabit(Habit updated) {
+    final index = _habits.indexWhere((h) => h.id == updated.id);
+    if (index == -1) return;
+    _habits[index] = updated;
+    notifyListeners();
+  }
+
+  /// Delete a habit by ID.
+  void deleteHabit(String habitId) {
+    _habits.removeWhere((h) => h.id == habitId);
+    notifyListeners();
+  }
 
   /// Select a day in the week selector.
   void selectDay(DateTime day) {
@@ -122,6 +257,16 @@ class HomeProvider extends ChangeNotifier {
       return DayStatus.missed;
     }
     return DayStatus.allDone;
+  }
+
+  // --- Private helpers ---
+
+  int _xpForIntensity(HabitIntensity intensity) {
+    return switch (intensity) {
+      HabitIntensity.light => 5,
+      HabitIntensity.moderate => 10,
+      HabitIntensity.intense => 20,
+    };
   }
 
   // --- Mock Data ---

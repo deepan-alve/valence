@@ -71,12 +71,16 @@ class HabitCard extends StatelessWidget {
   /// Called when the user long-presses the card (optional).
   final VoidCallback? onLongPress;
 
+  /// Called when the user taps the visibility toggle icon (optional).
+  final VoidCallback? onToggleVisibility;
+
   const HabitCard({
     super.key,
     required this.habit,
     required this.onTap,
     required this.onComplete,
     this.onLongPress,
+    this.onToggleVisibility,
   });
 
   @override
@@ -131,6 +135,26 @@ class HabitCard extends StatelessWidget {
                 ],
               ),
             ),
+            // Visibility toggle icon
+            if (onToggleVisibility != null) ...[
+              const SizedBox(width: ValenceSpacing.xs),
+              Semantics(
+                label: habit.visibility == HabitVisibility.minimal
+                    ? 'Habit hidden from group. Tap to show.'
+                    : 'Habit visible to group. Tap to hide.',
+                button: true,
+                child: GestureDetector(
+                  onTap: onToggleVisibility,
+                  child: PhosphorIcon(
+                    habit.visibility == HabitVisibility.minimal
+                        ? PhosphorIcons.lock()
+                        : PhosphorIcons.lockOpen(),
+                    size: 16,
+                    color: colors.textSecondary,
+                  ),
+                ),
+              ),
+            ],
             const SizedBox(width: ValenceSpacing.smMd),
 
             // Right: completion indicator

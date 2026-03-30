@@ -160,9 +160,10 @@ class _CompletionCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = tokens.colors;
+    final displayName = item.isMinimalVisibility ? 'their habit' : (item.habitName ?? 'a habit');
     final message = copy.completionMessage(
       item.senderName,
-      item.habitName ?? 'a habit',
+      displayName,
       plugin: item.verificationSource,
     );
 
@@ -279,7 +280,8 @@ class _MissCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = tokens.colors;
-    final message = copy.missMessage(item.senderName, item.habitName ?? 'a habit');
+    final displayName = item.isMinimalVisibility ? 'their habit' : (item.habitName ?? 'a habit');
+    final message = copy.missMessage(item.senderName, displayName);
 
     return _BaseCard(
       accentColor: colors.accentWarning,

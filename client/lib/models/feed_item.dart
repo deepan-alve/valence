@@ -40,6 +40,10 @@ class FeedItem {
   final String? verificationSource;
   final String? message;
 
+  /// When true, the habit name is hidden in the feed — only "their habit" is shown.
+  /// Reflects the habit's [HabitVisibility.minimal] setting (PRD 5.3.5).
+  final bool isMinimalVisibility;
+
   const FeedItem({
     required this.id,
     required this.type,
@@ -51,6 +55,7 @@ class FeedItem {
     this.habitName,
     this.verificationSource,
     this.message,
+    this.isMinimalVisibility = false,
   });
 
   /// Relative time label: "now", "2min", "3h", "1d".

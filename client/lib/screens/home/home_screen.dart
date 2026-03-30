@@ -4,14 +4,16 @@ import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:valence/models/habit.dart';
 import 'package:valence/providers/home_provider.dart';
 import 'package:valence/providers/miss_log_provider.dart';
+import 'package:valence/providers/profile_provider.dart';
 import 'package:valence/theme/valence_radii.dart';
 import 'package:valence/theme/valence_spacing.dart';
 import 'package:valence/theme/valence_tokens.dart';
 import 'package:valence/widgets/habit/day_selector.dart';
 import 'package:valence/widgets/habit/habit_card.dart';
 import 'package:valence/widgets/group/chain_strip.dart';
+import 'package:valence/widgets/shared/valence_toast.dart';
 import 'package:valence/widgets/social/recovery_card.dart';
-import 'package:valence/widgets/social/miss_logging_sheet.dart';
+import 'package:valence/screens/home/habit_form_screen.dart';
 
 /// Home screen — greeting, daily progress, day selector, habits grid, chain strip.
 class HomeScreen extends StatelessWidget {
@@ -19,8 +21,12 @@ class HomeScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider<HomeProvider>(
+    return ChangeNotifierProxyProvider<ProfileProvider, HomeProvider>(
       create: (_) => HomeProvider(),
+      update: (_, profileProvider, homeProvider) {
+        homeProvider!.setPersonaType(profileProvider.profile.personaType);
+        return homeProvider;
+      },
       child: const _HomeScreenBody(),
     );
   }
@@ -36,6 +42,15 @@ class _HomeScreenBody extends StatelessWidget {
 
     return Scaffold(
       backgroundColor: colors.surfaceBackground,
+      floatingActionButton: FloatingActionButton(
+        backgroundColor: colors.accentPrimary,
+        foregroundColor: colors.textInverse,
+        tooltip: 'Add habit',
+        onPressed: () => Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => const HabitFormScreen()),
+        ),
+        child: PhosphorIcon(PhosphorIcons.plus(), color: colors.textInverse),
+      ),
       body: SafeArea(
         child: Consumer<HomeProvider>(
           builder: (context, home, _) {
@@ -154,16 +169,29 @@ class _HomeScreenBody extends StatelessWidget {
                               ),
                             );
                           },
-                          onComplete: () => home.toggleHabit(habit.id),
-                          // Demo trigger: long-press an incomplete habit to show miss logging sheet
-                          onLongPress: habit.isCompleted
-                              ? null
-                              : () => MissLoggingSheet.show(
-                                    context,
-                                    habitId: habit.id,
-                                    habitName: habit.name,
-                                    onDone: () {},
-                                  ),
+                          onComplete: () {
+                            home.toggleHabit(habit.id);
+                            final reward = home.lastReward;
+                            if (reward != null) {
+                              final msg = reward.isPerfectDayBonus
+                                  ? '+${reward.xp} XP · +${reward.sparks} Sparks · Perfect day bonus!'
+                                  : '+${reward.xp} XP · +${reward.sparks} Sparks';
+                              ValenceToast.show(
+                                context,
+                                message: msg,
+                                type: ToastType.success,
+                              );
+                              home.clearLastReward();
+                            }
+                          },
+                          onToggleVisibility: () =>
+                              home.toggleHabitVisibility(habit.id),
+                          // Long-press: open edit form. Incomplete habits also show miss sheet via context menu.
+                          onLongPress: () => Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => HabitFormScreen(habit: habit),
+                            ),
+                          ),
                         );
                       },
                       childCount: home.habits.length,

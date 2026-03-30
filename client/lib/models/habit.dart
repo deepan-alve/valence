@@ -60,6 +60,16 @@ enum GroupTier {
   blaze,  // 66+ days
 }
 
+/// Controls what the group sees about this habit (PRD 5.3.5).
+enum HabitVisibility {
+  /// Group sees habit name, completion status, and proof.
+  full,
+
+  /// Group sees only done/not done. Habit name is hidden.
+  /// For sensitive habits (therapy, medication, etc.).
+  minimal,
+}
+
 /// A single habit displayed on the Home screen.
 class Habit {
   final String id;
@@ -73,6 +83,7 @@ class Habit {
   final String? pluginName;
   final String? redirectUrl;
   final int streakDays;
+  final HabitVisibility visibility;
 
   const Habit({
     required this.id,
@@ -86,6 +97,7 @@ class Habit {
     this.pluginName,
     this.redirectUrl,
     this.streakDays = 0,
+    this.visibility = HabitVisibility.full,
   });
 
   /// Whether this habit is tracked by an external plugin.
@@ -109,6 +121,7 @@ class Habit {
     String? pluginName,
     String? redirectUrl,
     int? streakDays,
+    HabitVisibility? visibility,
   }) {
     return Habit(
       id: id ?? this.id,
@@ -122,6 +135,7 @@ class Habit {
       pluginName: pluginName ?? this.pluginName,
       redirectUrl: redirectUrl ?? this.redirectUrl,
       streakDays: streakDays ?? this.streakDays,
+      visibility: visibility ?? this.visibility,
     );
   }
 }

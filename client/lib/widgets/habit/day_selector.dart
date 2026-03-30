@@ -48,7 +48,6 @@ class DaySelector extends StatelessWidget {
       height: 72,
       child: Row(
         children: days.asMap().entries.map((entry) {
-          final index = entry.key;
           final day = entry.value;
           final status = _statusFor(day);
           final selected = _isSelected(day);

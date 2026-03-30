@@ -166,6 +166,27 @@ class GroupProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Posts a miss notification to the group feed (PRD 5.4).
+  /// Only called when habit visibility is full.
+  void postMissToFeed({
+    required String habitName,
+    required String missReason,
+  }) {
+    _feedItems = [
+      FeedItem(
+        id: 'miss_${DateTime.now().millisecondsSinceEpoch}',
+        type: FeedItemType.miss,
+        senderName: 'You',
+        senderId: 'u1',
+        habitName: habitName,
+        message: missReason,
+        timestamp: DateTime.now(),
+      ),
+      ..._feedItems,
+    ];
+    notifyListeners();
+  }
+
   // ---------------------------------------------------------------------------
   // Mock data
   // ---------------------------------------------------------------------------

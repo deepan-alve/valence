@@ -15,16 +15,29 @@ import 'package:valence/widgets/shared/valence_toast.dart';
 ///
 /// Usage:
 /// ```dart
-/// NudgeSheet.show(context, memberId: 'u4', memberName: 'Ravi');
+/// NudgeSheet.show(
+///   context,
+///   memberId: 'u4',
+///   memberName: 'Ravi',
+///   habitName: 'Exercise',
+///   streakDays: 7,
+///   missReasons: ['tired'],
+/// );
 /// ```
 class NudgeSheet extends StatefulWidget {
   final String memberId;
   final String memberName;
+  final String habitName;
+  final int streakDays;
+  final List<String> missReasons;
 
   const NudgeSheet({
     super.key,
     required this.memberId,
     required this.memberName,
+    this.habitName = 'their habit',
+    this.streakDays = 0,
+    this.missReasons = const [],
   });
 
   /// Convenience: open as a modal bottom sheet.
@@ -32,12 +45,25 @@ class NudgeSheet extends StatefulWidget {
     BuildContext context, {
     required String memberId,
     required String memberName,
+    String habitName = 'their habit',
+    int streakDays = 0,
+    List<String> missReasons = const [],
   }) {
+    final groupProvider = context.read<GroupProvider>();
     return showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => NudgeSheet(memberId: memberId, memberName: memberName),
+      builder: (_) => ChangeNotifierProvider.value(
+        value: groupProvider,
+        child: NudgeSheet(
+          memberId: memberId,
+          memberName: memberName,
+          habitName: habitName,
+          streakDays: streakDays,
+          missReasons: missReasons,
+        ),
+      ),
     );
   }
 
@@ -59,9 +85,9 @@ class _NudgeSheetState extends State<NudgeSheet> {
   Future<void> _loadMessage() async {
     final msg = await _llmService.generateNudgeMessage(
       receiverName: widget.memberName,
-      habitName: 'their habit',
-      streakDays: 0,
-      recentMissReasons: [],
+      habitName: widget.habitName,
+      streakDays: widget.streakDays,
+      recentMissReasons: widget.missReasons,
     );
     if (mounted) {
       setState(() {

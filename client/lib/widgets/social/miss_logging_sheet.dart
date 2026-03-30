@@ -1,7 +1,9 @@
 // client/lib/widgets/social/miss_logging_sheet.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:valence/models/habit.dart';
 import 'package:valence/models/miss_log.dart';
+import 'package:valence/providers/group_provider.dart';
 import 'package:valence/providers/miss_log_provider.dart';
 import 'package:valence/theme/valence_radii.dart';
 import 'package:valence/theme/valence_spacing.dart';
@@ -14,31 +16,42 @@ class MissLoggingSheet extends StatefulWidget {
   final String habitName;
   final VoidCallback onDone;
 
+  /// Controls whether the miss is posted to the group feed (PRD 5.4).
+  /// Defaults to [HabitVisibility.full] (post to feed).
+  final HabitVisibility visibility;
+
   const MissLoggingSheet({
     super.key,
     required this.habitId,
     required this.habitName,
     required this.onDone,
+    this.visibility = HabitVisibility.full,
   });
 
-  /// Show the sheet, injecting an existing [MissLogProvider] through the route.
+  /// Show the sheet, injecting existing providers through the route.
   static Future<void> show(
     BuildContext context, {
     required String habitId,
     required String habitName,
     required VoidCallback onDone,
+    HabitVisibility visibility = HabitVisibility.full,
   }) {
-    final provider = context.read<MissLogProvider>();
+    final missLogProvider = context.read<MissLogProvider>();
+    final groupProvider = context.read<GroupProvider>();
     return showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => ChangeNotifierProvider<MissLogProvider>.value(
-        value: provider,
+      builder: (_) => MultiProvider(
+        providers: [
+          ChangeNotifierProvider<MissLogProvider>.value(value: missLogProvider),
+          ChangeNotifierProvider<GroupProvider>.value(value: groupProvider),
+        ],
         child: MissLoggingSheet(
           habitId: habitId,
           habitName: habitName,
           onDone: onDone,
+          visibility: visibility,
         ),
       ),
     );
@@ -68,6 +81,12 @@ class _MissLoggingSheetState extends State<MissLoggingSheet> {
               ? null
               : _textController.text.trim(),
         );
+    if (widget.visibility == HabitVisibility.full) {
+      context.read<GroupProvider>().postMissToFeed(
+            habitName: widget.habitName,
+            missReason: _selectedReason!.displayLabel,
+          );
+    }
     widget.onDone();
     Navigator.pop(context);
   }
