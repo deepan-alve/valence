@@ -24,7 +24,7 @@ dependencies:
 
   # Extra Features
   dynamic_color: ^1.5.4
-  material_color_utilities: ^0.13.0
+  material_color_utilities: ^0.11.1
   linked_scroll_controller: ^0.2.0
   sliver_tools: ^0.2.9
   share_plus: ^12.0.1
@@ -48,6 +48,8 @@ dependencies:
   cupertino_icons: ^1.0.8
   material_design_icons_flutter: ^7.0.7296
   cryptofont: ^1.0.2+1
+  phosphor_flutter: ^2.1.0
+  google_fonts: ^6.2.1
 
   # Data Structure
   provider: ^6.0.5
@@ -130,6 +132,12 @@ flutter:
     - family: CommonIcons
       fonts:
         - asset: assets/fonts/common_icons.ttf
+    - family: Obviously
+      fonts:
+        - asset: assets/fonts/Obviously-Bold.otf
+          weight: 700
+        - asset: assets/fonts/Obviously-SemiBold.otf
+          weight: 600
 
 flutter_gen:
   output: lib/assets/
