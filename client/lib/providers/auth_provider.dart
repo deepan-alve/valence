@@ -31,6 +31,17 @@ class AuthProvider extends ChangeNotifier {
     _firebaseAvailable = await _authService.initialize();
 
     if (_firebaseAvailable) {
+      // Seed from current user immediately to avoid race with stream
+      final currentUser = _authService.currentUser;
+      if (currentUser != null) {
+        _user = currentUser;
+        _status = AuthStatus.authenticated;
+      } else {
+        _status = AuthStatus.unauthenticated;
+      }
+      notifyListeners();
+
+      // Then listen for future changes
       _authService.authStateChanges.listen((user) {
         _user = user;
         _status = user != null
