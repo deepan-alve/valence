@@ -522,6 +522,389 @@ All notifications use the personality layer (if enabled):
 - **Meme-based (optional):** Fun image + motivational text
 - **Chain update:** "Gold link forged! Everyone showed up today 🥇"
 
+### 2.12 Solo Mode UX (No Group)
+
+When a user has no group, the app still works fully for individual habit tracking:
+
+**Home screen changes:**
+- Group streak chain section replaced with a personal streak chain (tracks consecutive perfect days)
+- Below the personal chain: a persistent banner — "Better with friends" card with mascot illustration + "Create a Group" / "Join a Group" buttons
+- Banner is dismissible but reappears weekly
+
+**Group tab (Tab 2) — Empty state:**
+- Full-screen illustration: mascot looking at an empty chain, slightly sad
+- Headline: "Habits stick better together"
+- Body: "Create a group with 2-6 friends. You'll hold each other accountable."
+- "Create a Group" primary button
+- "Join with Invite Link" secondary button
+- Social proof line: "Groups with 4+ members have 3x better retention"
+
+**Progress screen:**
+- Works identically — all per-habit stats are available
+- Overview tab shows individual data only, no group comparison
+
+**Nudge/Kudos:**
+- Not available in solo mode. These features only appear when user is in a group.
+
+**Leaderboard:**
+- Hidden entirely in solo mode
+
+### 2.13 Plugin Connection Flow
+
+**Entry points:** Habit Create/Edit screen (Auto toggle), Profile → Plugin Connections
+
+**Plugin list screen:**
+- Grid of available plugins, each as a card:
+  - Plugin icon + name (LeetCode, GitHub, Duolingo, etc.)
+  - One-line description: "Track daily problem solving"
+  - Status: "Connect" button / "Connected" green badge / "Reconnect" amber badge (expired)
+
+**Connection flow (per plugin):**
+1. Tap "Connect" → bottom sheet explains what data will be accessed
+2. "Authorize" button → opens in-app browser for OAuth flow (or credential form for non-OAuth plugins like LeetCode)
+3. Loading state: "Connecting to [Plugin]..." with spinner
+4. Success: green check animation + "Connected! We'll automatically track your [habit type]."
+5. Failure: error message + "Try Again" button + "Connect Manually" fallback link
+
+**Auth expired state:**
+- Plugin badge turns amber with "!" icon
+- Notification: "[Plugin] connection expired. Tap to reconnect."
+- Tapping opens a simplified re-auth flow (remembers previous credentials where possible)
+
+**Disconnection:**
+- In Profile → Plugin Connections, swipe left on a connected plugin → "Disconnect" red button
+- Confirmation: "Disconnect [Plugin]? Your habit will switch to manual tracking."
+
+### 2.14 Photo Proof Upload (Manual + Photo Tracking)
+
+When a habit uses "Manual + Photo" tracking method:
+
+**Completion flow:**
+1. Tap habit card → bottom sheet: "Mark as complete"
+2. Camera/gallery buttons: "Take Photo" (opens camera) or "Choose from Gallery"
+3. Photo preview with crop option
+4. Timestamp auto-stamped on photo (bottom-right overlay, semi-transparent)
+5. Optional: one-line caption ("Post-gym selfie")
+6. "Submit" button → uploads photo + marks habit complete
+
+**In group feed:**
+- Completion shows photo as an expandable thumbnail
+- "[Name] completed Gym ✓ 📸" — tapping photo opens full-screen viewer
+- Photo visible only if habit visibility is "Full" — Minimal visibility hides photo
+
+**Photo storage:**
+- Compressed to max 500KB before upload
+- Stored on server, referenced by habit_log_id
+- Retained for 90 days, then auto-deleted (storage management)
+
+### 2.15 Deep-Link Redirect UX
+
+When a habit has a redirect URL configured:
+
+**Home screen habit card:**
+- Shows a small "Open" arrow/icon badge on the card (distinguished from the completion checkbox)
+- Card tap behavior changes:
+  - **Single tap:** Opens the redirect URL (deep-link into target app)
+  - **Long press:** Opens habit detail sheet
+  - **Checkbox tap (top-right):** Marks complete directly without opening link
+
+**Redirect flow:**
+1. Tap card → brief loading indicator (200ms)
+2. App launches external URL (LeetCode, Kindle, Spotify, etc.)
+3. When user returns to Valence (via back gesture or app switch):
+   - If plugin-tracked: automatic — no prompt needed
+   - If manual-tracked: bottom sheet slides up: "Did you complete [Habit Name]?" with "Yes, done!" / "Not yet" buttons
+   - "Not yet" dismisses, user can complete later
+4. If user doesn't return within 2 hours: gentle push notification "Still working on [Habit]? Mark it done when you're ready."
+
+### 2.16 XP/Sparks Earning Feedback
+
+**On habit completion:**
+- Floating "+X XP  +X Sparks" text animates upward from the completed habit card
+- Text uses Numbers Body (Obviously Semi-Bold 16px) in accent.primary color
+- Fades out after 1.5s
+- XP/Spark values based on intensity: Light (+5), Moderate (+10), Intense (+20)
+
+**On perfect day (all habits completed):**
+- Full-width celebration banner slides down from top:
+  - "Perfect Day! +25 bonus XP" with confetti Lottie animation
+  - Banner auto-dismisses after 3s or tap to dismiss
+  - Background briefly flashes accent.success at 10% opacity
+
+**On streak milestone (7/30/100 days):**
+- Modal overlay:
+  - Large streak number with flame Lottie (scaled up)
+  - "[Habit Name] — 7-day streak!" in Display font
+  - "+30 XP  +30 Sparks" below
+  - Confetti/sparkle animation background
+  - "Keep going!" button dismisses
+  - Share button: generates a shareable streak card image
+
+### 2.17 Rank-Up Ceremony
+
+When user's total XP crosses a rank threshold (500/2000/5000/15000):
+
+- Full-screen modal with dim background
+- New rank badge animates in (scale from 0 → 1.2 → 1.0 with spring)
+- "Rank Up!" in Display font
+- Old rank → New rank transition animation (badge morphs)
+- Unlocked perks listed: "You can now access [items] in the Shop"
+- Sparkle/glow Lottie animation around the badge
+- "Awesome!" button to dismiss
+- Share button for social media
+
+### 2.18 Group Tier-Up Moment
+
+When group streak reaches a tier milestone (7d Ember, 21d Flame, 66d Blaze):
+
+- Appears in group feed as a special full-width card:
+  - Tier badge (large, animated — fire gets bigger with each tier)
+  - "Your group reached Flame! 🔥" in H1
+  - "21-day streak. You're building something real."
+  - Perk unlocked: "Group chat themes unlocked" / "Group milestones unlocked" / etc.
+  - All members see this simultaneously
+- Push notification to all members: "Your group just hit [Tier]! 🔥🔥🔥"
+
+### 2.19 66-Day Graduation Ceremony (Habit Formed)
+
+The biggest celebration in the app — this is THE moment:
+
+- Full-screen takeover (not a modal — a dedicated screen)
+- Mascot in celebration pose (confetti, party hat)
+- Large animated badge: "Habit Master" with shimmer effect
+- Habit name in Display font
+- Stats recap card:
+  - Total days completed
+  - Longest streak
+  - Total XP earned from this habit
+  - Times friends nudged you
+- "This habit is now part of who you are." — personality copy
+- Major XP bonus animation (+500 XP counting up)
+- "Share Your Achievement" button → generates shareable card with stats
+- "Archive" / "Keep Tracking" buttons below
+- Status+Norm message sent to group feed
+
+### 2.20 Streak Freeze Confirmation Flow
+
+**Entry:** "Streak Freeze" button on Group screen
+
+1. Button shows current consistency points balance (e.g., "❄️ Freeze (42 pts)")
+2. Tap → bottom sheet:
+   - "Use a Streak Freeze?"
+   - "This will protect today's group chain link if the group falls below 75%."
+   - Cost: "[X] consistency points" (exact cost TBD from PRD open questions)
+   - Current balance shown
+   - "Use Freeze" primary button + "Cancel" ghost button
+3. On confirm:
+   - Points deducted with count-down animation
+   - Toast: "Streak freeze activated! Your group is protected today."
+   - Feed notification: "[Name] used a streak freeze to protect the chain ❄️"
+4. If already used today: button shows "Freeze Active Today ❄️" (disabled)
+5. If insufficient points: button shows balance in red, tapping shows "You need [X] more points. Keep completing habits to earn them."
+
+### 2.21 Group Management
+
+**Admin actions (group creator):**
+- Settings gear icon in Group screen header → Group Settings sheet:
+  - Edit group name
+  - View/copy invite link
+  - Regenerate invite link
+  - Member list with roles:
+    - Tap member → "Remove from Group" (with confirmation: "Remove [Name]? Their data stays but they'll need a new invite to rejoin.")
+    - Transfer admin role
+  - "Disband Group" (destructive, red button, double confirmation: "This cannot be undone. All group streaks and chain data will be lost.")
+
+**Member leaving:**
+- Profile → Settings → "Leave Group" (or swipe in group list if multi-group)
+- Confirmation: "Leave [Group Name]? Your personal habit data is preserved, but you'll lose access to group features."
+- After leaving: Group tab shows empty state (same as solo mode)
+- Group feed shows: "[Name] left the group."
+- Group % calculation adjusts immediately (denominator decreases)
+
+**Inactive member handling:**
+- After 3 consecutive days of zero completions with no miss logs:
+  - Member's avatar gets a "💤" badge in member grid
+  - Group % calculation auto-excludes inactive members
+  - Feed message: "[Name] seems to be taking a break."
+  - After 7 days: admin gets a prompt "Remove inactive member?"
+  - Member can return anytime by simply completing a habit — inactive flag clears
+
+### 2.22 QR Code Group Join
+
+**Creating a group (QR generation):**
+- Group Setup screen (onboarding) and Group Settings both have "Share Invite"
+- Tapping shows a sheet with:
+  - QR code (large, centered, using accent.primary color instead of black)
+  - Invite link text (tappable to copy)
+  - "Share" button → native share sheet with link
+  - QR code has Valence logo watermark in center
+
+**Joining a group (QR scanning):**
+- "Join a Group" → two options:
+  - "Paste Invite Link" — text input
+  - "Scan QR Code" — opens camera
+- Camera permission request (first time): "Valence needs camera access to scan group invite QR codes"
+- Scanner screen: camera viewfinder with rounded-corner overlay frame
+- On successful scan: shows group preview card (group name, member count, tier) + "Join" button
+- On invalid QR: "This doesn't look like a Valence invite. Try again or paste the link."
+
+### 2.23 Permission Requests
+
+**Notification permission (during onboarding, after Group Setup):**
+- Dedicated screen (not a system popup alone):
+  - Mascot with a bell illustration
+  - "Stay in the loop"
+  - "Get nudges from friends, streak reminders, and celebration alerts"
+  - Bullet points: "Friend nudges", "Morning motivation", "Streak milestones"
+  - "Enable Notifications" primary button → triggers system permission dialog
+  - "Maybe Later" text link → skips, can enable in Settings later
+
+**Camera permission (on first QR scan or photo proof):**
+- System dialog with context already provided by the UI text above it
+
+### 2.24 Personality Layer (Meme Toggle)
+
+**When ON (default):**
+- Loading screens: random motivational meme/quote with mascot illustration
+- Notifications: witty copy ("Rise and grind — or at least rise")
+- Empty states: playful copy ("Your habits are lonely. Give them friends.")
+- Feed messages: fun framing ("Nitil is COOKING 🔥 7-day streak!")
+- Completion toast: randomized fun messages ("Beast mode activated", "One more in the bag")
+
+**When OFF:**
+- Loading screens: clean spinner only
+- Notifications: factual copy ("You have 3 habits to complete today")
+- Empty states: straightforward copy ("No habits tracked yet. Create one to get started.")
+- Feed messages: neutral framing ("Nitil reached a 7-day streak")
+- Completion toast: simple "Habit completed"
+
+**Toggle location:** Profile → Settings → "Personality & Fun" toggle
+**Visual indicator:** When personality is ON, the app icon on splash screen wears the mascot sunglasses. When OFF, plain logo.
+
+### 2.25 Loading & Error States
+
+**Per-screen skeleton loaders:**
+- **Home:** 2-col grid of shimmer cards (match habit card dimensions) + shimmer bar for progress + shimmer circles for day selector
+- **Group:** Shimmer avatar row + shimmer feed items (3 placeholder cards)
+- **Progress:** Shimmer chart area + shimmer stat numbers
+- **Shop:** Shimmer category tabs + shimmer grid items
+- **Profile:** Shimmer avatar circle + shimmer stat row + shimmer list items
+
+**Error states:**
+- **Network error:** Full-screen: sad mascot illustration + "Can't reach the server" + "Retry" button + "You can still view cached data" link (if cache available)
+- **API error:** Inline error card within the screen: "Something went wrong loading [section]" + "Retry" + collapse to not block other content
+- **Empty data:** Contextual illustration + actionable CTA (see EmptyState component)
+
+**Pull-to-refresh:** Available on Home, Group, Progress screens. Custom animation: chain links pulling apart and snapping back.
+
+### 2.26 Offline Behavior
+
+- **Cached data:** Last-fetched home screen, habit list, group feed cached in SQLite
+- **Offline indicator:** Subtle banner at top of screen: "You're offline. Changes will sync when connected." (accent.warning background)
+- **Offline actions allowed:**
+  - Mark habits as complete (queued for sync)
+  - View cached progress/stats
+  - View cached group feed
+  - Log miss reasons
+- **Offline actions blocked (with explanation):**
+  - Send nudges ("Nudges need an internet connection")
+  - Purchase shop items
+  - Connect plugins
+  - Create/join groups
+- **Sync on reconnect:**
+  - Queued completions sent in order
+  - Brief toast: "Synced! [X] updates sent."
+  - If conflict (e.g., plugin already marked complete while offline): server wins, no duplicate
+
+### 2.27 Multi-Group Support
+
+The PRD doesn't limit users to one group. UI handles multiple groups:
+
+**Group tab with multiple groups:**
+- Top of Group screen: horizontal scroll of group chips (group name + tier badge)
+- Active group highlighted, others muted
+- Tapping a chip switches the displayed group feed/leaderboard/member grid
+- "+" chip at end → "Create New Group" / "Join a Group"
+
+**Home screen with multiple groups:**
+- Group streak chain section shows the primary group's chain (user can set primary in settings)
+- Small "2 groups" badge → tapping shows group switcher
+
+**Notifications:**
+- Group-specific notifications are prefixed with group name: "[Study Squad] Gold link forged!"
+
+**Limits:**
+- Max 3 groups per user (prevents XP farming across many groups)
+- Each group independently tracks its own chain, tier, leaderboard
+
+### 2.28 Amplified Progress Stats
+
+Persona-driven motivational stats on the Home screen subtitle:
+
+**Rendering:**
+- Below the greeting, in Body Large (Plus Jakarta Sans Medium 16px), text.secondary color
+- Stat number itself in accent.primary color and Obviously Semi-Bold for emphasis
+
+**Examples by persona:**
+
+Socialiser:
+- "3 of 5 friends completed today. Don't let them down."
+- "Your group has a 12-day chain. You're the link today."
+- "You nudged 3 friends this week. Social MVP."
+
+Achiever:
+- "Day 14 — only 8% of users make it this far."
+- "Your completion rate: 94%. Top 3% of Valence."
+- "12 XP from Silver rank. One good day."
+
+General:
+- "4/6 habits done. Two more for a perfect day."
+- "3-day streak. 4 more to Ember tier."
+- "You've completed 89 habits total. That's not nothing."
+
+**Rotation:** LLM generates 3-5 variants daily at the preemptive nudge generation cron job (14:00 local). App cycles through them across the day. Fallback to predefined templates if LLM unavailable.
+
+### 2.29 Recovery Nudge UX
+
+The day after a miss:
+
+**Push notification (morning):**
+- Personality ON: "Yesterday was rough. Today's a fresh page. 📖"
+- Personality OFF: "Ready to get back on track? Your habits are waiting."
+- Tapping opens the app to Home screen
+
+**In-app (Home screen):**
+- A soft card appears above the habit grid (dismissible):
+  - Warm accent.warning background at 10% opacity
+  - Mascot in encouraging pose (arms open)
+  - "Yesterday didn't go as planned. That's okay."
+  - "Your streak is paused, not lost. Pick up where you left off."
+  - "Let's go" button (accent.primary) → scrolls to habit cards
+  - "×" to dismiss
+
+**If missed 3+ consecutive days:**
+- Recovery card becomes more prominent:
+  - "It's been [X] days. Your group still has your back."
+  - "Start with just one habit today. Small wins."
+  - Shows the easiest (Light intensity) habit as a single large card with prominent complete button
+
+### 2.30 Contribution Score Breakdown (Leaderboard Detail)
+
+In the weekly leaderboard, tapping a member's score row expands it:
+
+**Expanded view:**
+| Category | Points | Breakdown |
+|----------|--------|-----------|
+| Habits Completed | 45 | 9 habits × 5 days |
+| Group Streak Contributions | 15 | Present for 5 gold/silver links |
+| Kudos Received | 8 | Received 8 kudos from friends |
+| Perfect Days | 10 | 2 perfect days × 5 bonus |
+| **Total** | **78** | |
+
+- Bar chart showing this week vs. last week comparison
+- "Based on your personal baseline" caption
+- Collapse by tapping again
+
 ---
 
 ## 3. Component Library
@@ -557,6 +940,25 @@ All notifications use the personality layer (if enabled):
 | `EmptyState` | No Habits, No Group, No Data | Illustration + CTA |
 | `SkeletonLoader` | Card, List, Chart | Shimmer effect per theme |
 | `Toast` | Success, Info, Warning, Error | Brief overlay messages |
+| `XPGainOverlay` | — | Floating "+X XP +X Sparks" animation |
+| `PerfectDayBanner` | — | Celebration banner with confetti |
+| `RankUpModal` | — | Full-screen rank-up ceremony |
+| `TierUpCard` | — | Group tier milestone feed card |
+| `GraduationScreen` | — | Full-screen 66-day celebration |
+| `StreakMilestoneModal` | — | 7/30/100 day streak celebration |
+| `RecoveryCard` | — | Post-miss encouragement card |
+| `OfflineBanner` | — | "You're offline" indicator |
+| `PermissionRequest` | Notification, Camera | Pre-permission explanation screen |
+| `QRScanner` | — | Camera viewfinder with overlay frame |
+| `QRDisplay` | — | QR code with Valence branding |
+| `PhotoProofSheet` | — | Camera/gallery picker + preview + submit |
+| `DeepLinkReturn` | — | "Did you complete it?" bottom sheet |
+| `GroupChip` | Active, Inactive | Group switcher chip for multi-group |
+| `GroupSettingsSheet` | — | Admin management (rename, remove, disband) |
+| `ContributionBreakdown` | — | Expandable leaderboard score detail |
+| `PersonalityToggle` | — | On/off with preview of copy style change |
+| `PluginConnectSheet` | — | OAuth flow + status display |
+| `InviteShareSheet` | — | QR + link + share button |
 
 ### 3.2 Theme-Aware Architecture
 
@@ -602,35 +1004,75 @@ Modal routes (pushed on top):
 ├── NudgeSheet
 ├── ReflectionSheet
 ├── MissLogSheet
-├── PluginConnectSheet
-├── GroupInviteSheet
-└── SettingsScreen
+├── PluginConnectSheet (OAuth browser + status)
+├── PluginListScreen
+├── GroupInviteSheet (QR display + share)
+├── GroupSettingsSheet (admin management)
+├── QRScannerScreen (camera viewfinder)
+├── PhotoProofSheet (camera/gallery + preview)
+├── DeepLinkReturnSheet ("Did you complete it?")
+├── SettingsScreen
+├── RankUpModal (full-screen ceremony)
+├── StreakMilestoneModal (7/30/100 day celebration)
+├── GraduationScreen (66-day full takeover)
+├── NotificationPermissionScreen
+└── StreakFreezeSheet (confirmation + points)
 ```
 
 **State management:** Keep Provider (existing codebase uses it). Add new ViewModels for:
 - `ThemeViewModel` — manages active theme, token resolution, equipped customizations
-- `GroupViewModel` — group feed, member status, chain, leaderboard
+- `GroupViewModel` — group feed, member status, chain, leaderboard, multi-group switcher
 - `ShopViewModel` — items, purchase flow, equip flow
 - `OnboardingViewModel` — flow state, selections
 - `NudgeViewModel` — nudge state, rate limiting
 - `ReflectionViewModel` — reflection state
+- `PluginViewModel` — plugin list, connection states, OAuth flows
+- `OfflineViewModel` — connectivity state, sync queue, cached data management
+- `CelebrationViewModel` — rank-ups, tier-ups, milestones, graduation (queues celebrations so they don't stack)
+- `PersonaViewModel` — persona type, amplified progress stat rotation, personality toggle
 
 ---
 
 ## 5. Asset Requirements
 
 ### 5.1 Illustrations (AI-generated or commissioned)
-- Mascot: Welcome pose (thumbs up), Teaching pose (pointing), Shield pose (protecting), Celebrating pose (confetti), Meditating pose
-- Empty states: No habits yet, No group yet, No data yet, All done today (celebration)
+
+**Mascot poses (orange character with sunglasses):**
+- Welcome pose (thumbs up) — onboarding splash
+- Teaching pose (pointing) — onboarding carousel
+- Shield pose (protecting) — "Never Reset" onboarding page
+- Celebrating pose (confetti, party hat) — 66-day graduation
+- Meditating pose — reflection/mindfulness context
+- Encouraging pose (arms open) — recovery nudge card
+- Sad/lonely pose — empty group state
+- Holding chain pose — group setup onboarding
+- Bell pose — notification permission screen
+- Sunglasses off pose — personality layer OFF indicator
+
+**Empty states:**
+- No habits yet — mascot looking at blank checklist
+- No group yet — mascot looking at empty chain, slightly sad
+- No data yet — mascot with magnifying glass
+- All done today — mascot doing a victory dance
+- No results (search) — mascot shrugging
+- Offline — mascot with unplugged cable
 
 ### 5.2 Lottie Animations
 - Streak flames: 6 variants (default orange, blue, purple, golden, pixel, lightning)
 - Check animations: 6 variants (ripple, water, confetti, sakura, pixel, lightning)
 - Chain link forging: gold flash, silver matte, broken crack
-- Loading shimmer
-- XP count-up sparkle
-- Celebration (66-day graduation)
+- Loading shimmer (theme-aware: warm shimmer for dark, cool for light)
+- XP count-up sparkle (floating numbers + particles)
+- Celebration — 66-day graduation (confetti rain + badge reveal)
+- Celebration — rank-up (badge morph + glow burst)
+- Celebration — perfect day (brief confetti across top of screen)
+- Celebration — streak milestone (flame scale-up + sparkle)
+- Group tier-up (fire gets progressively bigger: Spark→Ember→Flame→Blaze)
 - Pull-to-refresh chain pull
+- Nudge sent fly-out (pulse + arrow)
+- Kudos heart burst
+- Sync indicator (two arrows rotating)
+- QR scan success (green check in viewfinder)
 
 ### 5.3 Fonts
 - Obviously (Bold, Semi-Bold) — bundled
