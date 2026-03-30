@@ -334,4 +334,93 @@ class PersonalityCopy {
     if (!personalityOn) return 'Based on each member\'s personal baseline';
     return 'Based on YOUR baseline — every point is earned, not given 📈';
   }
+
+  // ---------------------------------------------------------------------------
+  // Notification copy (spec 2.11)
+  // ---------------------------------------------------------------------------
+
+  String morningActivation(String name, int friendsCompleted) {
+    if (!personalityOn) {
+      return friendsCompleted > 0
+          ? '$friendsCompleted friends already completed habits. Your turn.'
+          : 'Good morning. Time to work on your habits.';
+    }
+    if (friendsCompleted == 0) {
+      final templates = [
+        'Rise and grind, $name — be the first one in the group today.',
+        'Morning, $name. Main character energy doesn\'t sleep in.',
+        '$name. New day. Let\'s see what you\'re made of.',
+      ];
+      return templates[_random.nextInt(templates.length)];
+    }
+    final templates = [
+      'Rise and grind — $name, $friendsCompleted people already knocked out habits before 9am.',
+      '$name, $friendsCompleted friends are already cooking. Don\'t let them carry the team alone.',
+      'Morning, $name. $friendsCompleted habits done in your group. Your turn.',
+    ];
+    return templates[_random.nextInt(templates.length)];
+  }
+
+  String eveningReflection(String name) {
+    if (!personalityOn) {
+      return 'Quick reflection on today\'s habits? It takes 15 seconds.';
+    }
+    final templates = [
+      '$name, how did today go? 30 seconds of reflection keeps the streak alive.',
+      'End-of-day check-in, $name. How were the habits?',
+      'Day\'s almost done, $name. Quick habit reflection — it\'s 15 seconds, not a dissertation.',
+    ];
+    return templates[_random.nextInt(templates.length)];
+  }
+
+  String missNotification(String habitName) {
+    if (!personalityOn) {
+      return 'Missed $habitName today. Want to log why?';
+    }
+    final templates = [
+      'Missed $habitName today. No judgment — want to log why? Helps us help you.',
+      '$habitName didn\'t happen today. That\'s okay. What got in the way?',
+      'Rest is part of the process. What happened with $habitName today?',
+    ];
+    return templates[_random.nextInt(templates.length)];
+  }
+
+  String recoveryNudge(String name, int daysMissed) {
+    if (!personalityOn) {
+      return 'Ready to get back on track? Your habits are waiting.';
+    }
+    if (daysMissed >= 3) {
+      return 'It\'s been $daysMissed days, $name. Your group still has your back. Start with one habit.';
+    }
+    final templates = [
+      'Yesterday was rough, $name. Today\'s a fresh page.',
+      '$name — streak paused, not lost. Pick up where you left off.',
+      'New day, $name. The chain can start again right now.',
+    ];
+    return templates[_random.nextInt(templates.length)];
+  }
+
+  String preemptiveWarning(String habitName, String missPattern) {
+    if (!personalityOn) {
+      return '$missPattern — you tend to miss $habitName. Knock it out now?';
+    }
+    final templates = [
+      '$missPattern — your kryptonite. Knock out $habitName NOW before the day gets away.',
+      'Heads up: $missPattern is when $habitName usually slips. Strike early today.',
+      'Pattern alert: $habitName vs $missPattern. We\'ve seen this before. Get ahead of it.',
+    ];
+    return templates[_random.nextInt(templates.length)];
+  }
+
+  String chainUpdate(String tierName) {
+    if (!personalityOn) {
+      return 'Your group achieved $tierName chain status!';
+    }
+    final templates = [
+      '$tierName link forged! Everyone showed up today.',
+      'The whole squad pulled through — $tierName chain achieved. Respect all around.',
+      'Gold standard behavior today: $tierName chain.',
+    ];
+    return templates[_random.nextInt(templates.length)];
+  }
 }
