@@ -19,7 +19,7 @@ class IconResolver {
       'heart' => PhosphorIcons.heart(),
       'fire' => PhosphorIcons.fire(),
       'star' => PhosphorIcons.star(),
-      _ => PhosphorIcons.circleWavyQuestion(),
+      _ => PhosphorIcons.question(),
     };
   }
 }

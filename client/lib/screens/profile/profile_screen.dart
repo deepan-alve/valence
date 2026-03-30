@@ -273,7 +273,7 @@ class _ProfileScreenBody extends StatelessWidget {
           if (!habit.isArchived && onArchive != null)
             GestureDetector(
               onTap: () => onArchive(habit.id),
-              child: Icon(PhosphorIcons.archiveBox(), size: 20, color: colors.textSecondary),
+              child: Icon(PhosphorIcons.archive(), size: 20, color: colors.textSecondary),
             ),
           if (habit.isArchived && onUnarchive != null)
             GestureDetector(
