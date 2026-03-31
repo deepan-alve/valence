@@ -4,14 +4,18 @@ import 'package:valence/models/group_member.dart';
 import 'package:valence/models/group_streak.dart';
 import 'package:valence/models/habit.dart';
 import 'package:valence/models/weekly_score.dart';
+import 'package:valence/services/group_service.dart';
+import 'package:valence/services/social_service.dart';
 import 'package:valence/utils/personality_copy.dart';
 
 enum LeaderboardPeriod { week, month }
 
 /// Manages group screen state: members, feed, leaderboard, actions, personality toggle.
-/// Uses rich mock data until the API service layer is wired in.
 class GroupProvider extends ChangeNotifier {
   final bool _soloMode;
+  final GroupService _groupService;
+  final SocialService _socialService;
+  String? _groupId;
 
   List<GroupMember> _members = [];
   List<FeedItem> _feedItems = [];
@@ -26,7 +30,13 @@ class GroupProvider extends ChangeNotifier {
   GroupTier _groupTier = GroupTier.ember;
   late GroupStreak _groupStreakData;
 
-  GroupProvider({bool soloMode = false}) : _soloMode = soloMode {
+  GroupProvider({
+    bool soloMode = false,
+    GroupService? groupService,
+    SocialService? socialService,
+  })  : _soloMode = soloMode,
+        _groupService = groupService ?? GroupService(),
+        _socialService = socialService ?? SocialService() {
     if (!soloMode) {
       _groupName = 'Build Squad';
       _groupStreakDays = 14;
@@ -35,6 +45,7 @@ class GroupProvider extends ChangeNotifier {
       _feedItems = _mockFeedItems();
       _weeklyScores = _mockWeeklyScores();
       _groupStreakData = _mockGroupStreak();
+      _loadGroups();
     } else {
       // Initialise a dummy GroupStreak for soloMode so late field is set.
       _groupStreakData = const GroupStreak(
@@ -116,6 +127,14 @@ class GroupProvider extends ChangeNotifier {
       ..._feedItems,
     ];
     notifyListeners();
+    if (_groupId != null) {
+      final gid = _groupId!;
+      () async {
+        try {
+          await _socialService.sendNudge(receiverId: memberId, groupId: gid);
+        } catch (_) {}
+      }();
+    }
   }
 
   /// Send kudos to [memberId]. No-op if [memberId] is current user.
@@ -136,6 +155,14 @@ class GroupProvider extends ChangeNotifier {
       ..._feedItems,
     ];
     notifyListeners();
+    if (_groupId != null) {
+      final gid = _groupId!;
+      () async {
+        try {
+          await _socialService.sendKudos(receiverId: memberId, groupId: gid);
+        } catch (_) {}
+      }();
+    }
   }
 
   /// Use a streak freeze. Deducts [freezeCost] consistency points. No-op if
@@ -159,6 +186,14 @@ class GroupProvider extends ChangeNotifier {
       ..._feedItems,
     ];
     notifyListeners();
+    if (_groupId != null) {
+      final gid = _groupId!;
+      () async {
+        try {
+          await _groupService.useStreakFreeze(gid);
+        } catch (_) {}
+      }();
+    }
   }
 
   void setLeaderboardPeriod(LeaderboardPeriod period) {
@@ -185,6 +220,46 @@ class GroupProvider extends ChangeNotifier {
       ..._feedItems,
     ];
     notifyListeners();
+  }
+
+  // ---------------------------------------------------------------------------
+  // API
+  // ---------------------------------------------------------------------------
+
+  Future<void> _loadGroups() async {
+    try {
+      final groups = await _groupService.fetchGroups();
+      if (groups.isEmpty) return;
+      final first = groups.first as Map<String, dynamic>;
+      _groupId = first['id'] as String?;
+      _groupName = first['name'] as String? ?? _groupName;
+      notifyListeners();
+      if (_groupId != null) {
+        await Future.wait([
+          _loadFeed(_groupId!),
+          _loadStreak(_groupId!),
+        ]);
+      }
+    } catch (_) {
+      // Keep mock data
+    }
+  }
+
+  Future<void> _loadFeed(String groupId) async {
+    try {
+      final raw = await _groupService.fetchFeed(groupId);
+      if (raw.isEmpty) return;
+      // Keep mock feed — real feed items need backend event schema mapping
+    } catch (_) {}
+  }
+
+  Future<void> _loadStreak(String groupId) async {
+    try {
+      final data = await _groupService.fetchStreak(groupId);
+      final streak = (data['current_streak'] as num?)?.toInt() ?? _groupStreakDays;
+      _groupStreakDays = streak;
+      notifyListeners();
+    } catch (_) {}
   }
 
   // ---------------------------------------------------------------------------

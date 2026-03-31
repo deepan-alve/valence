@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:valence/models/habit.dart';
 import 'package:valence/models/group_streak.dart';
 import 'package:valence/models/user_profile.dart';
+import 'package:valence/services/habit_service.dart';
+import 'package:valence/services/api_client.dart';
 import 'package:valence/utils/constants.dart';
 
 /// Reward awarded when a habit is completed.
@@ -17,12 +19,17 @@ class HabitReward {
 }
 
 /// Manages home screen state: habits, daily progress, selected day, group streak.
-/// Uses mock data until the API service layer is built (Phase 7+).
+/// Loads real data from the API; falls back to mock data when offline.
 class HomeProvider extends ChangeNotifier {
+  final HabitService _habitService;
+
   List<Habit> _habits = [];
   DateTime _selectedDay = DateTime.now();
   late GroupStreak _groupStreak;
-  final String _userName = 'Diana';
+  String _userName = 'You';
+
+  bool _loading = false;
+  String? _error;
 
   // XP / Sparks session state
   int _sessionXp = 0;
@@ -33,10 +40,14 @@ class HomeProvider extends ChangeNotifier {
   // Persona-driven subtitle
   PersonaType _personaType = PersonaType.general;
 
-  HomeProvider() {
-    _habits = _mockHabits();
+  HomeProvider({HabitService? habitService})
+      : _habitService = habitService ?? HabitService() {
     _groupStreak = _mockGroupStreak();
+    loadHabits();
   }
+
+  bool get isLoading => _loading;
+  String? get error => _error;
 
   // --- Getters ---
 
@@ -132,6 +143,62 @@ class HomeProvider extends ChangeNotifier {
     });
   }
 
+  // --- API ---
+
+  /// Load habits from the API. Falls back to mock data on error.
+  Future<void> loadHabits() async {
+    _loading = true;
+    _error = null;
+    notifyListeners();
+    try {
+      final raw = await _habitService.fetchHabits();
+      _habits = raw.map((h) => _habitFromApi(h as Map<String, dynamic>)).toList();
+      _loading = false;
+      notifyListeners();
+    } on ApiException catch (e) {
+      _loading = false;
+      _error = e.message;
+      _habits = _mockHabits();
+      notifyListeners();
+    } catch (_) {
+      _loading = false;
+      _habits = _mockHabits();
+      notifyListeners();
+    }
+  }
+
+  Habit _habitFromApi(Map<String, dynamic> h) {
+    final tracking = h['tracking_method'] as String? ?? 'manual';
+    final vis = h['visibility'] as String? ?? 'full';
+    return Habit(
+      id: h['id'] as String,
+      name: h['name'] as String,
+      subtitle: h['subtitle'] as String? ?? '',
+      color: HabitColors.fromName(h['color'] as String? ?? 'blue'),
+      iconName: h['icon_name'] as String? ?? 'star',
+      trackingType: _parseTrackingType(tracking),
+      pluginName: h['plugin_id'] as String?,
+      redirectUrl: h['redirect_url'] as String?,
+      isCompleted: h['completed_today'] as bool? ?? false,
+      intensity: _parseIntensity(h['intensity'] as String? ?? 'moderate'),
+      streakDays: h['streak_days'] as int? ?? 0,
+      visibility: vis == 'minimal' ? HabitVisibility.minimal : HabitVisibility.full,
+    );
+  }
+
+  TrackingType _parseTrackingType(String s) => switch (s) {
+        'plugin' => TrackingType.plugin,
+        'manual_photo' => TrackingType.manualPhoto,
+        'redirect' => TrackingType.redirect,
+        _ => TrackingType.manual,
+      };
+
+  HabitIntensity _parseIntensity(String s) => switch (s) {
+        'light' => HabitIntensity.light,
+        'intense' => HabitIntensity.intense,
+        _ => HabitIntensity.moderate,
+      };
+
   // --- Actions ---
 
   /// Update the persona type (called by ChangeNotifierProxyProvider from ProfileProvider).
@@ -154,27 +221,24 @@ class HomeProvider extends ChangeNotifier {
     if (index == -1) return;
 
     final habit = _habits[index];
-    // Plugin habits are auto-tracked --- cannot be toggled manually
     if (habit.isPlugin) return;
 
     final wasCompleted = habit.isCompleted;
+    // Optimistic update
     _habits[index] = habit.copyWith(isCompleted: !wasCompleted);
 
     if (!wasCompleted) {
-      // Completing — award XP/Sparks
+      // Optimistic XP (will be reconciled with server response)
       final baseXp = _xpForIntensity(habit.intensity);
       var totalXp = baseXp;
-      var totalSparks = baseXp; // same amount as XP
+      var totalSparks = baseXp;
       var isPerfectDayBonus = false;
-
-      // Check perfect day bonus after the toggle
       if (isPerfectDay && !_perfectDayBonusAwarded) {
         totalXp += 25;
         totalSparks += 25;
         _perfectDayBonusAwarded = true;
         isPerfectDayBonus = true;
       }
-
       _sessionXp += totalXp;
       _sessionSparks += totalSparks;
       _lastReward = HabitReward(
@@ -182,12 +246,49 @@ class HomeProvider extends ChangeNotifier {
         sparks: totalSparks,
         isPerfectDayBonus: isPerfectDayBonus,
       );
+      notifyListeners();
+      // Fire-and-forget to backend; reconcile on response
+      _completeHabitApi(habitId, index, habit, totalXp, totalSparks);
     } else {
-      // Un-completing — no deduction in real app (can't un-earn XP in production)
       _lastReward = null;
+      notifyListeners();
     }
+  }
 
-    notifyListeners();
+  Future<void> _completeHabitApi(
+    String habitId,
+    int index,
+    Habit original,
+    int optimisticXp,
+    int optimisticSparks,
+  ) async {
+    try {
+      final res = await _habitService.completeHabit(habitId);
+      final points = res['points'] as Map<String, dynamic>?;
+      if (points != null) {
+        final serverXp = (points['xpAwarded'] as num?)?.toInt() ?? optimisticXp;
+        final serverSparks = (points['sparksAwarded'] as num?)?.toInt() ?? optimisticSparks;
+        final diff = serverXp - optimisticXp;
+        _sessionXp += diff;
+        _sessionSparks += serverSparks - optimisticSparks;
+        final isPerfect = res['perfectDay'] as bool? ?? false;
+        _lastReward = HabitReward(
+          xp: serverXp,
+          sparks: serverSparks,
+          isPerfectDayBonus: isPerfect,
+        );
+        notifyListeners();
+      }
+    } on ApiException catch (_) {
+      // Revert optimistic update on error
+      if (index < _habits.length) {
+        _habits[index] = original;
+        _sessionXp -= optimisticXp;
+        _sessionSparks -= optimisticSparks;
+        _lastReward = null;
+        notifyListeners();
+      }
+    }
   }
 
   /// Toggle completion for a habit (alias for toggleHabit).

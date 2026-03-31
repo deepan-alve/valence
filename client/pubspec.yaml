@@ -78,6 +78,9 @@ dependencies:
   animated_check: ^1.0.5
   animations: ^2.0.7
 
+  # Networking
+  http: ^1.2.2
+
   # logging
   logger: ^2.1.0
 

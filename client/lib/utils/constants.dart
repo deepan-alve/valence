@@ -37,6 +37,21 @@ class HabitColors {
     'Mint',
     'Slate',
   ];
+
+  static Color fromName(String name) {
+    return switch (name.toLowerCase()) {
+      'lime' => lime,
+      'amber' => amber,
+      'pink' => pink,
+      'orange' => orange,
+      'teal' => teal,
+      'purple' => purple,
+      'coral' => coral,
+      'mint' => mint,
+      'slate' => slate,
+      _ => blue,
+    };
+  }
 }
 
 class ValenceDurations {
