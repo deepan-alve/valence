@@ -2,76 +2,36 @@ import 'package:flutter/material.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:valence/models/habit.dart';
 import 'package:valence/theme/valence_spacing.dart';
-import 'package:valence/theme/valence_tokens.dart';
-import 'package:valence/widgets/core/valence_card.dart';
 
-/// Maps a habit's [iconName] string (from mock data) to a [PhosphorIconData].
-///
-/// Falls back to [PhosphorIcons.star] for unknown icon names.
+/// Maps a habit's [iconName] string to a [PhosphorIconData].
 PhosphorIconData habitIconData(String iconName) {
   switch (iconName) {
-    case 'code':
-      return PhosphorIcons.code();
-    case 'barbell':
-      return PhosphorIcons.barbell();
-    case 'book-open':
-      return PhosphorIcons.bookOpen();
-    case 'brain':
-      return PhosphorIcons.brain();
-    case 'globe':
-      return PhosphorIcons.globe();
-    case 'pencil-simple':
-      return PhosphorIcons.pencilSimple();
-    case 'flame':
-      return PhosphorIcons.flame();
-    case 'heart':
-      return PhosphorIcons.heart();
-    case 'music-note':
-      return PhosphorIcons.musicNote();
-    case 'lightning':
-      return PhosphorIcons.lightning();
-    case 'leaf':
-      return PhosphorIcons.leaf();
-    case 'sun':
-      return PhosphorIcons.sun();
-    case 'moon':
-      return PhosphorIcons.moon();
-    case 'pencil':
-      return PhosphorIcons.pencil();
-    case 'check-circle':
-      return PhosphorIcons.checkCircle();
-    case 'lock':
-      return PhosphorIcons.lock();
-    case 'camera':
-      return PhosphorIcons.camera();
-    case 'arrow-square-out':
-      return PhosphorIcons.arrowSquareOut();
-    default:
-      return PhosphorIcons.star();
+    case 'code':       return PhosphorIcons.code();
+    case 'barbell':    return PhosphorIcons.barbell();
+    case 'book-open':  return PhosphorIcons.bookOpen();
+    case 'brain':      return PhosphorIcons.brain();
+    case 'globe':      return PhosphorIcons.globe();
+    case 'pencil-simple': return PhosphorIcons.pencilSimple();
+    case 'flame':      return PhosphorIcons.flame();
+    case 'heart':      return PhosphorIcons.heart();
+    case 'music-note': return PhosphorIcons.musicNote();
+    case 'lightning':  return PhosphorIcons.lightning();
+    case 'leaf':       return PhosphorIcons.leaf();
+    case 'sun':        return PhosphorIcons.sun();
+    case 'moon':       return PhosphorIcons.moon();
+    case 'pencil':     return PhosphorIcons.pencil();
+    case 'camera':     return PhosphorIcons.camera();
+    default:           return PhosphorIcons.star();
   }
 }
 
-/// A card representing a single habit on the Home screen.
-///
-/// Follows the gesture matrix:
-/// | Gesture       | Manual       | ManualPhoto  | Plugin   | Redirect  |
-/// |---------------|--------------|--------------|----------|-----------|
-/// | Tap checkbox  | Complete     | Photo sheet  | Disabled | Complete  |
-/// | Tap card body | Detail       | Detail       | Detail   | Open URL  |
+/// Full-color habit card matching the Valence UI reference design.
+/// Icon + completion indicator on top row, name + subtitle at the bottom.
 class HabitCard extends StatelessWidget {
   final Habit habit;
-
-  /// Called when the user taps the card body.
   final VoidCallback onTap;
-
-  /// Called when the user taps the checkbox (manual/redirect habits).
-  /// Also called for manualPhoto habits (caller is responsible for the photo sheet).
   final VoidCallback onComplete;
-
-  /// Called when the user long-presses the card (optional).
   final VoidCallback? onLongPress;
-
-  /// Called when the user taps the visibility toggle icon (optional).
   final VoidCallback? onToggleVisibility;
 
   const HabitCard({
@@ -85,217 +45,229 @@ class HabitCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final tokens = context.tokens;
-    final colors = tokens.colors;
-    final typography = tokens.typography;
+    final isMinimal = habit.visibility == HabitVisibility.minimal;
 
-    final iconData = habitIconData(habit.iconName);
+    // Completed cards get desaturated — mix color toward grey
+    final baseColor = habit.color;
+    final cardColor = habit.isCompleted
+        ? Color.lerp(baseColor, const Color(0xFFE0E0E0), 0.45)!
+        : baseColor;
+
+    // Text always dark on these light habit colors
+    const textDark = Color(0xFF1A1A2E);
+    const textMuted = Color(0xFF4A4A5E);
 
     return Semantics(
-      label: '${habit.name}: ${habit.subtitle}. '
-          '${habit.isCompleted ? "Completed" : "Not completed"}',
-      child: ValenceCard(
-        accentColor: habit.color,
+      label: '${habit.name}. ${habit.isCompleted ? "Completed" : "Not completed"}',
+      child: GestureDetector(
         onTap: onTap,
         onLongPress: onLongPress,
-        padding: const EdgeInsets.all(ValenceSpacing.md),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            // Left: habit icon
-            _HabitIcon(
-              iconData: iconData,
-              color: habit.color,
-            ),
-            const SizedBox(width: ValenceSpacing.smMd),
-
-            // Center: name + subtitle
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    habit.name,
-                    style: typography.h3.copyWith(
-                      color: colors.textPrimary,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    habit.subtitle,
-                    style: typography.caption.copyWith(
-                      color: colors.textSecondary,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
-              ),
-            ),
-            // Visibility toggle icon
-            if (onToggleVisibility != null) ...[
-              const SizedBox(width: ValenceSpacing.xs),
-              Semantics(
-                label: habit.visibility == HabitVisibility.minimal
-                    ? 'Habit hidden from group. Tap to show.'
-                    : 'Habit visible to group. Tap to hide.',
-                button: true,
-                child: GestureDetector(
-                  onTap: onToggleVisibility,
-                  child: PhosphorIcon(
-                    habit.visibility == HabitVisibility.minimal
-                        ? PhosphorIcons.lock()
-                        : PhosphorIcons.lockOpen(),
-                    size: 16,
-                    color: colors.textSecondary,
-                  ),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          decoration: BoxDecoration(
+            color: cardColor,
+            borderRadius: BorderRadius.circular(20),
+          ),
+          padding: const EdgeInsets.all(ValenceSpacing.md),
+          child: isMinimal
+              ? _MinimalContent(
+                  habit: habit,
+                  onComplete: onComplete,
+                  textDark: textDark,
+                )
+              : _FullContent(
+                  habit: habit,
+                  onComplete: onComplete,
+                  onToggleVisibility: onToggleVisibility,
+                  textDark: textDark,
+                  textMuted: textMuted,
                 ),
-              ),
-            ],
-            const SizedBox(width: ValenceSpacing.smMd),
-
-            // Right: completion indicator
-            _CompletionIndicator(
-              habit: habit,
-              tokens: tokens,
-              onComplete: onComplete,
-            ),
-          ],
         ),
       ),
     );
   }
 }
 
-/// Rounded icon container on the left side of the card.
-class _HabitIcon extends StatelessWidget {
-  final PhosphorIconData iconData;
-  final Color color;
-
-  const _HabitIcon({required this.iconData, required this.color});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 40,
-      height: 40,
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.15),
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: Center(
-        child: PhosphorIcon(
-          iconData,
-          size: 22,
-          color: color,
-        ),
-      ),
-    );
-  }
-}
-
-/// Right-side indicator that varies by [TrackingType].
-///
-/// - Manual / Redirect: tappable circle checkbox
-/// - ManualPhoto: tappable circle (triggers photo sheet via [onComplete])
-/// - Plugin: lock icon + "Auto" label (not tappable)
-class _CompletionIndicator extends StatelessWidget {
+class _FullContent extends StatelessWidget {
   final Habit habit;
-  final ValenceTokens tokens;
   final VoidCallback onComplete;
+  final VoidCallback? onToggleVisibility;
+  final Color textDark;
+  final Color textMuted;
 
-  const _CompletionIndicator({
+  const _FullContent({
     required this.habit,
-    required this.tokens,
     required this.onComplete,
+    required this.onToggleVisibility,
+    required this.textDark,
+    required this.textMuted,
   });
 
   @override
   Widget build(BuildContext context) {
-    final colors = tokens.colors;
-    final typography = tokens.typography;
+    final iconData = habitIconData(habit.iconName);
 
-    // Plugin habits are auto-tracked — show lock icon, not tappable
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Top row: icon left, actions right
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Icon container
+            Container(
+              width: 38,
+              height: 38,
+              decoration: BoxDecoration(
+                color: Colors.black.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Center(
+                child: PhosphorIcon(iconData, size: 20, color: textDark),
+              ),
+            ),
+            const Spacer(),
+            // Visibility toggle (subtle)
+            if (onToggleVisibility != null)
+              GestureDetector(
+                onTap: onToggleVisibility,
+                child: Padding(
+                  padding: const EdgeInsets.only(right: 6, top: 2),
+                  child: PhosphorIcon(
+                    habit.visibility == HabitVisibility.minimal
+                        ? PhosphorIcons.lock()
+                        : PhosphorIcons.lockOpen(),
+                    size: 14,
+                    color: textDark.withValues(alpha: 0.4),
+                  ),
+                ),
+              ),
+            // Completion indicator
+            _CompletionButton(
+              habit: habit,
+              onComplete: onComplete,
+              textDark: textDark,
+            ),
+          ],
+        ),
+
+        const Spacer(),
+
+        // Bottom: name + subtitle
+        Text(
+          habit.name,
+          style: TextStyle(
+            fontFamily: 'Obviously',
+            fontSize: 17,
+            fontWeight: FontWeight.w700,
+            color: textDark,
+            height: 1.2,
+          ),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+        const SizedBox(height: 3),
+        Text(
+          habit.subtitle,
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w400,
+            color: textMuted,
+            height: 1.3,
+          ),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+      ],
+    );
+  }
+}
+
+class _MinimalContent extends StatelessWidget {
+  final Habit habit;
+  final VoidCallback onComplete;
+  final Color textDark;
+
+  const _MinimalContent({
+    required this.habit,
+    required this.onComplete,
+    required this.textDark,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final iconData = habitIconData(habit.iconName);
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        PhosphorIcon(iconData, size: 22, color: textDark.withValues(alpha: 0.5)),
+        _CompletionButton(
+          habit: habit,
+          onComplete: onComplete,
+          textDark: textDark,
+        ),
+      ],
+    );
+  }
+}
+
+class _CompletionButton extends StatelessWidget {
+  final Habit habit;
+  final VoidCallback onComplete;
+  final Color textDark;
+
+  const _CompletionButton({
+    required this.habit,
+    required this.onComplete,
+    required this.textDark,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    // Plugin: lock + auto label
     if (habit.isPlugin) {
       return Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          PhosphorIcon(
-            PhosphorIcons.lock(),
-            size: 18,
-            color: colors.textSecondary,
-          ),
+          PhosphorIcon(PhosphorIcons.lock(), size: 16,
+              color: textDark.withValues(alpha: 0.5)),
           const SizedBox(height: 2),
-          Text(
-            'Auto',
-            style: typography.overline.copyWith(
-              color: colors.textSecondary,
-            ),
-          ),
+          Text('Auto',
+              style: TextStyle(
+                  fontSize: 9,
+                  fontWeight: FontWeight.w600,
+                  color: textDark.withValues(alpha: 0.5))),
         ],
       );
     }
 
-    // Completed state
-    if (habit.isCompleted) {
-      return Semantics(
-        label: 'Completed. Tap to undo.',
-        button: true,
-        child: GestureDetector(
-          onTap: onComplete,
-          child: Container(
-            width: 32,
-            height: 32,
-            decoration: BoxDecoration(
-              color: colors.accentSuccess,
-              shape: BoxShape.circle,
-            ),
-            child: Icon(
-              Icons.check,
-              size: 18,
-              color: colors.textInverse,
-            ),
-          ),
-        ),
-      );
-    }
-
-    // Manual / ManualPhoto / Redirect: tappable empty circle
-    final String semanticLabel;
-    if (habit.requiresPhoto) {
-      semanticLabel = 'Complete with photo';
-    } else {
-      semanticLabel = 'Mark as complete';
-    }
-
     return Semantics(
-      label: semanticLabel,
+      label: habit.isCompleted ? 'Completed. Tap to undo.' : 'Mark as complete',
       button: true,
       child: GestureDetector(
         onTap: onComplete,
-        child: Container(
-          width: 32,
-          height: 32,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          width: 30,
+          height: 30,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
+            color: habit.isCompleted ? textDark : Colors.transparent,
             border: Border.all(
-              color: colors.borderDefault,
+              color: habit.isCompleted
+                  ? textDark
+                  : textDark.withValues(alpha: 0.35),
               width: 2,
             ),
           ),
-          // ManualPhoto: show a small camera hint icon inside the circle
-          child: habit.requiresPhoto
-              ? Center(
-                  child: PhosphorIcon(
-                    PhosphorIcons.camera(),
-                    size: 14,
-                    color: colors.textSecondary,
-                  ),
-                )
-              : null,
+          child: habit.isCompleted
+              ? Icon(Icons.check_rounded, size: 16, color: Colors.white)
+              : habit.requiresPhoto
+                  ? Center(
+                      child: PhosphorIcon(PhosphorIcons.camera(),
+                          size: 12,
+                          color: textDark.withValues(alpha: 0.5)))
+                  : null,
         ),
       ),
     );

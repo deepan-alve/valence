@@ -42,15 +42,6 @@ class _HomeScreenBody extends StatelessWidget {
 
     return Scaffold(
       backgroundColor: colors.surfaceBackground,
-      floatingActionButton: FloatingActionButton(
-        backgroundColor: colors.accentPrimary,
-        foregroundColor: colors.textInverse,
-        tooltip: 'Add habit',
-        onPressed: () => Navigator.of(context).push(
-          MaterialPageRoute(builder: (_) => const HabitFormScreen()),
-        ),
-        child: PhosphorIcon(PhosphorIcons.plus(), color: colors.textInverse),
-      ),
       body: SafeArea(
         child: Consumer<HomeProvider>(
           builder: (context, home, _) {
@@ -153,7 +144,7 @@ class _HomeScreenBody extends StatelessWidget {
                       crossAxisCount: 2,
                       crossAxisSpacing: ValenceSpacing.sm,
                       mainAxisSpacing: ValenceSpacing.sm,
-                      childAspectRatio: 2.4,
+                      childAspectRatio: 0.88,
                     ),
                     delegate: SliverChildBuilderDelegate(
                       (context, index) {
@@ -229,6 +220,13 @@ class _GreetingSection extends StatelessWidget {
 
   const _GreetingSection({required this.home});
 
+  String _timeGreeting() {
+    final h = DateTime.now().hour;
+    if (h < 12) return 'Good morning,';
+    if (h < 17) return 'Good afternoon,';
+    return 'Good evening,';
+  }
+
   @override
   Widget build(BuildContext context) {
     final tokens = context.tokens;
@@ -237,23 +235,31 @@ class _GreetingSection extends StatelessWidget {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        // Left: greeting text
+        // Left: "Good morning," small, then user name large
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                home.greeting,
-                style: tokens.typography.h1.copyWith(
+                _timeGreeting(),
+                style: tokens.typography.bodyLarge.copyWith(
+                  color: colors.textSecondary,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              Text(
+                home.userName,
+                style: tokens.typography.display.copyWith(
                   color: colors.textPrimary,
+                  fontSize: 38,
                 ),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
-              const SizedBox(height: ValenceSpacing.xs),
+              const SizedBox(height: 2),
               Text(
                 home.subtitle,
-                style: tokens.typography.bodyLarge.copyWith(
+                style: tokens.typography.caption.copyWith(
                   color: colors.textSecondary,
                 ),
                 maxLines: 2,

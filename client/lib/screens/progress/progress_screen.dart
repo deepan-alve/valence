@@ -1,24 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:valence/models/habit_progress.dart';
-import 'package:valence/models/overview_stats.dart';
 import 'package:valence/providers/progress_provider.dart';
 import 'package:valence/theme/valence_radii.dart';
 import 'package:valence/theme/valence_spacing.dart';
 import 'package:valence/theme/valence_tokens.dart';
-import 'package:valence/widgets/progress/frequency_chart.dart';
-import 'package:valence/widgets/progress/goal_progress.dart';
-import 'package:valence/widgets/progress/heatmap.dart';
-import 'package:valence/widgets/progress/reflection_sheet.dart';
 
-/// Full Progress screen with two top-level tabs:
-///   1. Per-Habit — streaks, goal graduation, heatmap, frequency chart,
-///      failure insights, and an optional Reflect FAB.
-///   2. Overview — completion rate, XP/rank, stats grid, week comparison,
-///      and personality-aware encouragement.
-///
-/// Self-scoped [ProgressProvider] so this screen's state is independent of
-/// any app-level provider tree.
 class ProgressScreen extends StatelessWidget {
   const ProgressScreen({super.key});
 
@@ -26,529 +13,163 @@ class ProgressScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return ChangeNotifierProvider(
       create: (_) => ProgressProvider(),
-      child: const _ProgressScreenBody(),
+      child: const _ProgressBody(),
     );
   }
 }
 
-class _ProgressScreenBody extends StatelessWidget {
-  const _ProgressScreenBody();
+class _ProgressBody extends StatelessWidget {
+  const _ProgressBody();
 
   @override
   Widget build(BuildContext context) {
     final tokens = context.tokens;
     final colors = tokens.colors;
-
-    return DefaultTabController(
-      length: 2,
-      child: Scaffold(
-        backgroundColor: colors.surfaceBackground,
-        appBar: AppBar(
-          backgroundColor: colors.surfacePrimary,
-          elevation: 0,
-          scrolledUnderElevation: 0,
-          title: Text(
-            'Progress',
-            style: tokens.typography.h2.copyWith(color: colors.textPrimary),
-          ),
-          bottom: TabBar(
-            labelColor: colors.accentPrimary,
-            unselectedLabelColor: colors.textSecondary,
-            indicatorColor: colors.accentPrimary,
-            indicatorWeight: 2.5,
-            labelStyle: tokens.typography.body.copyWith(
-              fontWeight: FontWeight.w600,
-            ),
-            unselectedLabelStyle: tokens.typography.body,
-            tabs: const [
-              Tab(text: 'Per-Habit'),
-              Tab(text: 'Overview'),
-            ],
-          ),
-        ),
-        body: const TabBarView(
-          children: [
-            _PerHabitTab(),
-            _OverviewTab(),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-// =============================================================================
-// Per-Habit Tab
-// =============================================================================
-
-class _PerHabitTab extends StatelessWidget {
-  const _PerHabitTab();
-
-  @override
-  Widget build(BuildContext context) {
     final provider = context.watch<ProgressProvider>();
-    final selected = provider.selectedHabitProgress;
-    final tokens = context.tokens;
-    final colors = tokens.colors;
+    final stats = provider.overviewStats;
 
-    return Stack(
-      children: [
-        ListView(
-          padding: const EdgeInsets.only(
-            left: ValenceSpacing.md,
-            right: ValenceSpacing.md,
-            top: ValenceSpacing.md,
-            bottom: 80, // space for FAB
-          ),
-          children: [
-            // ── 1. Habit chip selector ───────────────────────────────────
-            _HabitChipSelector(
-              provider: provider,
-              tokens: tokens,
-              colors: colors,
-            ),
-            const SizedBox(height: ValenceSpacing.lg),
-
-            // ── 2. Streak section ─────────────────────────────────────────
-            _StreakSection(
-              habitProgress: selected,
-              tokens: tokens,
-              colors: colors,
-            ),
-            const SizedBox(height: ValenceSpacing.lg),
-
-            // ── 3. Goal progress ──────────────────────────────────────────
-            _SectionCard(
-              tokens: tokens,
-              colors: colors,
-              title: 'Goal Progress',
-              child: GoalProgress(
-                goalStage: selected.goalStage,
-                daysToNextStage: selected.daysToNextStage,
-                totalDaysCompleted: selected.totalDaysCompleted,
-              ),
-            ),
-            const SizedBox(height: ValenceSpacing.md),
-
-            // ── 4. Heatmap ────────────────────────────────────────────────
-            _SectionCard(
-              tokens: tokens,
-              colors: colors,
-              title: 'Activity (12 weeks)',
-              child: ValenceHeatmap(
-                data: selected.heatmapData,
-                color: selected.habitColor,
-              ),
-            ),
-            const SizedBox(height: ValenceSpacing.md),
-
-            // ── 5. Frequency chart ────────────────────────────────────────
-            _SectionCard(
-              tokens: tokens,
-              colors: colors,
-              title: 'Completion by Day',
-              child: FrequencyChart(
-                frequencyByDay: selected.frequencyByDay,
-                color: selected.habitColor,
-              ),
-            ),
-            const SizedBox(height: ValenceSpacing.md),
-
-            // ── 6. Failure insights ───────────────────────────────────────
-            if (selected.failureInsights.isNotEmpty)
-              _FailureInsightsSection(
-                insights: selected.failureInsights,
-                tokens: tokens,
-                colors: colors,
-              ),
-          ],
-        ),
-
-        // ── 7. Reflect FAB ─────────────────────────────────────────────────
-        if (selected.reflectionUnlocked)
-          Positioned(
-            bottom: ValenceSpacing.lg,
-            right: ValenceSpacing.md,
-            child: _ReflectFab(habitProgress: selected),
-          ),
-      ],
-    );
-  }
-}
-
-// =============================================================================
-// Overview Tab
-// =============================================================================
-
-class _OverviewTab extends StatelessWidget {
-  const _OverviewTab();
-
-  @override
-  Widget build(BuildContext context) {
-    final stats = context.watch<ProgressProvider>().overviewStats;
-    final tokens = context.tokens;
-    final colors = tokens.colors;
-
-    return ListView(
-      padding: const EdgeInsets.all(ValenceSpacing.md),
-      children: [
-        // ── 1. Large completion rate ────────────────────────────────────
-        _CompletionRateCard(stats: stats, tokens: tokens, colors: colors),
-        const SizedBox(height: ValenceSpacing.md),
-
-        // ── 2. XP + Rank progress bar ───────────────────────────────────
-        _XpRankCard(stats: stats, tokens: tokens, colors: colors),
-        const SizedBox(height: ValenceSpacing.md),
-
-        // ── 3. Stats grid ───────────────────────────────────────────────
-        _StatsGrid(stats: stats, tokens: tokens, colors: colors),
-        const SizedBox(height: ValenceSpacing.md),
-
-        // ── 4. Best week vs current week ────────────────────────────────
-        _WeekComparisonRow(stats: stats, tokens: tokens, colors: colors),
-        const SizedBox(height: ValenceSpacing.lg),
-
-        // ── 5. Personality-aware encouragement ──────────────────────────
-        _EncouragementCard(stats: stats, tokens: tokens, colors: colors),
-        const SizedBox(height: ValenceSpacing.xl),
-      ],
-    );
-  }
-}
-
-// =============================================================================
-// Per-Habit Sub-widgets
-// =============================================================================
-
-/// Horizontal scrollable row of habit color chips.
-class _HabitChipSelector extends StatelessWidget {
-  final ProgressProvider provider;
-  final ValenceTokens tokens;
-  final dynamic colors;
-
-  const _HabitChipSelector({
-    required this.provider,
-    required this.tokens,
-    required this.colors,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      height: 40,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        itemCount: provider.habits.length,
-        separatorBuilder: (_, _) =>
-            const SizedBox(width: ValenceSpacing.sm),
-        itemBuilder: (context, i) {
-          final habit = provider.habits[i];
-          final isSelected = provider.selectedHabitIndex == i;
-
-          return GestureDetector(
-            onTap: () => provider.selectHabit(i),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 180),
-              padding: const EdgeInsets.symmetric(
-                horizontal: ValenceSpacing.smMd,
-                vertical: ValenceSpacing.xs,
-              ),
-              decoration: BoxDecoration(
-                color: isSelected
-                    ? habit.color.withValues(alpha: 0.18)
-                    : colors.surfaceSunken,
-                borderRadius: ValenceRadii.roundAll,
-                border: Border.all(
-                  color: isSelected ? colors.accentPrimary : Colors.transparent,
-                  width: 1.5,
+    return Scaffold(
+      backgroundColor: colors.surfaceBackground,
+      body: SafeArea(
+        child: CustomScrollView(
+          slivers: [
+            // ── Title ───────────────────────────────────────────────────────
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  ValenceSpacing.md,
+                  ValenceSpacing.md,
+                  ValenceSpacing.md,
+                  ValenceSpacing.sm,
                 ),
-              ),
-              child: Text(
-                habit.name,
-                style: tokens.typography.caption.copyWith(
-                  color: isSelected ? colors.accentPrimary : colors.textSecondary,
-                  fontWeight:
-                      isSelected ? FontWeight.w700 : FontWeight.w500,
-                ),
-              ),
-            ),
-          );
-        },
-      ),
-    );
-  }
-}
-
-/// Large streak number with flame + stat cards row.
-class _StreakSection extends StatelessWidget {
-  final HabitProgress habitProgress;
-  final ValenceTokens tokens;
-  final dynamic colors;
-
-  const _StreakSection({
-    required this.habitProgress,
-    required this.tokens,
-    required this.colors,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Large streak display
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: [
-            Text(
-              '${habitProgress.currentStreak}',
-              style: tokens.typography.numbersDisplay.copyWith(
-                color: colors.textPrimary,
-                fontSize: 56,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-            const SizedBox(width: ValenceSpacing.xs),
-            Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: Text(
-                '🔥',
-                style: const TextStyle(fontSize: 32),
-              ),
-            ),
-            const SizedBox(width: ValenceSpacing.sm),
-            Padding(
-              padding: const EdgeInsets.only(bottom: 10),
-              child: Text(
-                'day streak',
-                style: tokens.typography.bodyLarge.copyWith(
-                  color: colors.textSecondary,
-                ),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: ValenceSpacing.smMd),
-
-        // Stat cards row: Current / Longest / Total
-        Row(
-          children: [
-            Expanded(
-              child: _SmallStatCard(
-                label: 'Current',
-                value: '${habitProgress.currentStreak}',
-                tokens: tokens,
-                colors: colors,
-              ),
-            ),
-            const SizedBox(width: ValenceSpacing.sm),
-            Expanded(
-              child: _SmallStatCard(
-                label: 'Longest',
-                value: '${habitProgress.longestStreak}',
-                tokens: tokens,
-                colors: colors,
-              ),
-            ),
-            const SizedBox(width: ValenceSpacing.sm),
-            Expanded(
-              child: _SmallStatCard(
-                label: 'Total Days',
-                value: '${habitProgress.totalDaysCompleted}',
-                tokens: tokens,
-                colors: colors,
-              ),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-}
-
-/// Failure insights section with encouraging personality-aware text.
-class _FailureInsightsSection extends StatelessWidget {
-  final List<String> insights;
-  final ValenceTokens tokens;
-  final dynamic colors;
-
-  const _FailureInsightsSection({
-    required this.insights,
-    required this.tokens,
-    required this.colors,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Insights',
-          style: tokens.typography.h3.copyWith(color: colors.textPrimary),
-        ),
-        const SizedBox(height: ValenceSpacing.sm),
-        ...insights.map(
-          (insight) => Padding(
-            padding: const EdgeInsets.only(bottom: ValenceSpacing.sm),
-            child: Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(ValenceSpacing.md),
-              decoration: BoxDecoration(
-                color: colors.accentWarning.withValues(alpha: 0.12),
-                borderRadius: ValenceRadii.mediumAll,
-                border: Border.all(
-                  color: colors.accentWarning.withValues(alpha: 0.3),
-                  width: 1,
-                ),
-              ),
-              child: Text(
-                insight,
-                style: tokens.typography.body.copyWith(
-                  color: colors.textPrimary,
-                ),
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-/// Small floating action button for opening the ReflectionSheet.
-class _ReflectFab extends StatelessWidget {
-  final HabitProgress habitProgress;
-
-  const _ReflectFab({required this.habitProgress});
-
-  @override
-  Widget build(BuildContext context) {
-    final tokens = context.tokens;
-    final colors = tokens.colors;
-
-    return GestureDetector(
-      onTap: () => ReflectionSheet.show(context, habitProgress),
-      child: Container(
-        padding: const EdgeInsets.symmetric(
-          horizontal: ValenceSpacing.md,
-          vertical: ValenceSpacing.sm,
-        ),
-        decoration: BoxDecoration(
-          color: colors.accentPrimary,
-          borderRadius: ValenceRadii.roundAll,
-          boxShadow: [
-            BoxShadow(
-              color: colors.accentPrimary.withValues(alpha: 0.35),
-              blurRadius: 12,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text('✍️', style: TextStyle(fontSize: 16)),
-            const SizedBox(width: ValenceSpacing.xs),
-            Text(
-              'Reflect',
-              style: tokens.typography.body.copyWith(
-                color: colors.textInverse,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-// =============================================================================
-// Overview Sub-widgets
-// =============================================================================
-
-class _CompletionRateCard extends StatelessWidget {
-  final OverviewStats stats;
-  final ValenceTokens tokens;
-  final dynamic colors;
-
-  const _CompletionRateCard({
-    required this.stats,
-    required this.tokens,
-    required this.colors,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final pct = (stats.overallCompletionRate * 100).round();
-
-    return Container(
-      padding: const EdgeInsets.all(ValenceSpacing.lg),
-      decoration: BoxDecoration(
-        color: colors.surfacePrimary,
-        borderRadius: ValenceRadii.largeAll,
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Overall Completion',
-                  style: tokens.typography.overline.copyWith(
-                    color: colors.textSecondary,
-                  ),
-                ),
-                const SizedBox(height: ValenceSpacing.xs),
-                Text(
-                  '$pct%',
-                  style: tokens.typography.numbersDisplay.copyWith(
+                child: Text(
+                  'Progress',
+                  style: tokens.typography.display.copyWith(
                     color: colors.textPrimary,
-                    fontSize: 52,
+                    fontSize: 32,
                   ),
                 ),
-                Text(
-                  'across all habits (84 days)',
-                  style: tokens.typography.caption.copyWith(
-                    color: colors.textSecondary,
-                  ),
+              ),
+            ),
+
+            // ── Rank card ────────────────────────────────────────────────────
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: ValenceSpacing.md,
                 ),
-              ],
+                child: _RankCard(stats: stats, tokens: tokens),
+              ),
             ),
-          ),
-          // Simple circular indicator
-          SizedBox(
-            width: 64,
-            height: 64,
-            child: CircularProgressIndicator(
-              value: stats.overallCompletionRate,
-              strokeWidth: 6,
-              backgroundColor: colors.surfaceSunken,
-              valueColor:
-                  AlwaysStoppedAnimation<Color>(colors.accentPrimary),
+
+            // ── 4 stat tiles ────────────────────────────────────────────────
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  ValenceSpacing.md,
+                  ValenceSpacing.md,
+                  ValenceSpacing.md,
+                  0,
+                ),
+                child: _StatTileRow(stats: stats, tokens: tokens),
+              ),
             ),
-          ),
-        ],
+
+            // ── Habit Activity ───────────────────────────────────────────────
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  ValenceSpacing.md,
+                  ValenceSpacing.lg,
+                  ValenceSpacing.md,
+                  ValenceSpacing.sm,
+                ),
+                child: Text(
+                  'Habit Activity',
+                  style: tokens.typography.h2
+                      .copyWith(color: colors.textPrimary),
+                ),
+              ),
+            ),
+
+            SliverPadding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: ValenceSpacing.md,
+              ),
+              sliver: SliverList(
+                delegate: SliverChildBuilderDelegate(
+                  (context, i) {
+                    final hp = provider.habitProgresses[i];
+                    return Padding(
+                      padding:
+                          const EdgeInsets.only(bottom: ValenceSpacing.sm),
+                      child: _HabitActivityCard(hp: hp, tokens: tokens),
+                    );
+                  },
+                  childCount: provider.habitProgresses.length,
+                ),
+              ),
+            ),
+
+            // ── 66-Day Journey ───────────────────────────────────────────────
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  ValenceSpacing.md,
+                  ValenceSpacing.lg,
+                  ValenceSpacing.md,
+                  ValenceSpacing.sm,
+                ),
+                child: Text(
+                  '66-Day Journey',
+                  style: tokens.typography.h2
+                      .copyWith(color: colors.textPrimary),
+                ),
+              ),
+            ),
+
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(
+                ValenceSpacing.md,
+                0,
+                ValenceSpacing.md,
+                ValenceSpacing.xxl,
+              ),
+              sliver: SliverList(
+                delegate: SliverChildBuilderDelegate(
+                  (context, i) {
+                    final hp = provider.habitProgresses[i];
+                    return Padding(
+                      padding:
+                          const EdgeInsets.only(bottom: ValenceSpacing.sm),
+                      child: _MasteryBar(hp: hp, tokens: tokens),
+                    );
+                  },
+                  childCount: provider.habitProgresses.length,
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 }
 
-class _XpRankCard extends StatelessWidget {
-  final OverviewStats stats;
-  final ValenceTokens tokens;
-  final dynamic colors;
+// ---------------------------------------------------------------------------
+// Rank card
+// ---------------------------------------------------------------------------
 
-  const _XpRankCard({
-    required this.stats,
-    required this.tokens,
-    required this.colors,
-  });
+class _RankCard extends StatelessWidget {
+  final dynamic stats;
+  final ValenceTokens tokens;
+
+  const _RankCard({required this.stats, required this.tokens});
 
   @override
   Widget build(BuildContext context) {
+    final colors = tokens.colors;
+
     return Container(
       padding: const EdgeInsets.all(ValenceSpacing.md),
       decoration: BoxDecoration(
@@ -559,15 +180,31 @@ class _XpRankCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                'Rank: ${stats.currentRank}',
-                style: tokens.typography.body.copyWith(
-                  color: colors.textPrimary,
-                  fontWeight: FontWeight.w700,
+              // Rank badge pill
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE8EAFF),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text('🥈', style: TextStyle(fontSize: 14)),
+                    const SizedBox(width: 4),
+                    Text(
+                      stats.currentRank,
+                      style: tokens.typography.caption.copyWith(
+                        color: colors.accentPrimary,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
                 ),
               ),
+              const Spacer(),
               Text(
                 '${stats.totalXP} XP',
                 style: tokens.typography.numbersBody.copyWith(
@@ -590,9 +227,8 @@ class _XpRankCard extends StatelessWidget {
           const SizedBox(height: ValenceSpacing.xs),
           Text(
             '${stats.xpToNextRank} XP to next rank',
-            style: tokens.typography.caption.copyWith(
-              color: colors.textSecondary,
-            ),
+            style: tokens.typography.caption
+                .copyWith(color: colors.textSecondary),
           ),
         ],
       ),
@@ -600,204 +236,68 @@ class _XpRankCard extends StatelessWidget {
   }
 }
 
-class _StatsGrid extends StatelessWidget {
-  final OverviewStats stats;
-  final ValenceTokens tokens;
-  final dynamic colors;
+// ---------------------------------------------------------------------------
+// 4 stat tiles in a row
+// ---------------------------------------------------------------------------
 
-  const _StatsGrid({
-    required this.stats,
-    required this.tokens,
-    required this.colors,
-  });
+class _StatTileRow extends StatelessWidget {
+  final dynamic stats;
+  final ValenceTokens tokens;
+
+  const _StatTileRow({required this.stats, required this.tokens});
 
   @override
   Widget build(BuildContext context) {
-    final items = [
-      ('Total Habits', '${stats.totalHabitsTracked}'),
-      ('Total Days', '${stats.totalDaysCompleted}'),
-      ('Perfect Days', '${stats.perfectDays}'),
-      ('Graduated', '${stats.habitsGraduated}'),
+    final tiles = [
+      ('Best Streak', '${_bestStreak(stats)}', '🔥'),
+      ('Days Done', '${stats.totalDaysCompleted}', '✅'),
+      ('Perfect Days', '${stats.perfectDays}', '⭐'),
+      ('Graduated', '${stats.habitsGraduated}', '🎓'),
     ];
 
-    return GridView.count(
-      crossAxisCount: 2,
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      crossAxisSpacing: ValenceSpacing.sm,
-      mainAxisSpacing: ValenceSpacing.sm,
-      childAspectRatio: 1.7,
-      children: items
-          .map(
-            (item) => _StatGridCell(
-              label: item.$1,
-              value: item.$2,
-              tokens: tokens,
-              colors: colors,
-            ),
-          )
-          .toList(),
-    );
-  }
-}
-
-class _WeekComparisonRow extends StatelessWidget {
-  final OverviewStats stats;
-  final ValenceTokens tokens;
-  final dynamic colors;
-
-  const _WeekComparisonRow({
-    required this.stats,
-    required this.tokens,
-    required this.colors,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final bestPct = (stats.bestWeekRate * 100).round();
-    final currPct = (stats.currentWeekRate * 100).round();
-
     return Row(
-      children: [
-        Expanded(
-          child: _SmallStatCard(
-            label: 'Best Week',
-            value: '$bestPct%',
-            tokens: tokens,
-            colors: colors,
-            accent: colors.accentSuccess,
-          ),
-        ),
-        const SizedBox(width: ValenceSpacing.sm),
-        Expanded(
-          child: _SmallStatCard(
-            label: 'This Week',
-            value: '$currPct%',
-            tokens: tokens,
-            colors: colors,
-            accent: colors.accentPrimary,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _EncouragementCard extends StatelessWidget {
-  final OverviewStats stats;
-  final ValenceTokens tokens;
-  final dynamic colors;
-
-  const _EncouragementCard({
-    required this.stats,
-    required this.tokens,
-    required this.colors,
-  });
-
-  String get _message {
-    final rate = stats.overallCompletionRate;
-    if (rate >= 0.8) {
-      return "You're absolutely crushing it. ${stats.totalDaysCompleted} completions across all habits — that's not luck, that's discipline. Keep going.";
-    } else if (rate >= 0.6) {
-      return "Solid consistency. Most people quit before 10 days — you've got ${stats.perfectDays} perfect days. Don't stop now.";
-    } else if (rate >= 0.4) {
-      return "You're showing up, and that matters. ${stats.totalHabitsTracked} habits in motion. Small wins compound into big change.";
-    } else {
-      return "Every streak starts with a single day. Today is that day. Your future self is counting on you.";
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(ValenceSpacing.md),
-      decoration: BoxDecoration(
-        color: colors.accentPrimary.withValues(alpha: 0.08),
-        borderRadius: ValenceRadii.largeAll,
-        border: Border.all(
-          color: colors.accentPrimary.withValues(alpha: 0.2),
-          width: 1,
-        ),
-      ),
-      child: Text(
-        _message,
-        style: tokens.typography.body.copyWith(
-          color: colors.textPrimary,
-          height: 1.6,
-        ),
-        textAlign: TextAlign.center,
-      ),
-    );
-  }
-}
-
-// =============================================================================
-// Shared card primitives
-// =============================================================================
-
-/// A labelled section card with a title and child widget.
-class _SectionCard extends StatelessWidget {
-  final ValenceTokens tokens;
-  final dynamic colors;
-  final String title;
-  final Widget child;
-
-  const _SectionCard({
-    required this.tokens,
-    required this.colors,
-    required this.title,
-    required this.child,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(ValenceSpacing.md),
-      decoration: BoxDecoration(
-        color: colors.surfacePrimary,
-        borderRadius: ValenceRadii.largeAll,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            title,
-            style: tokens.typography.overline.copyWith(
-              color: colors.textSecondary,
+      children: tiles.asMap().entries.map((e) {
+        final isLast = e.key == tiles.length - 1;
+        return Expanded(
+          child: Padding(
+            padding: EdgeInsets.only(right: isLast ? 0 : ValenceSpacing.xs),
+            child: _StatTile(
+              label: e.value.$1,
+              value: e.value.$2,
+              emoji: e.value.$3,
+              tokens: tokens,
             ),
           ),
-          const SizedBox(height: ValenceSpacing.smMd),
-          child,
-        ],
-      ),
+        );
+      }).toList(),
     );
+  }
+
+  int _bestStreak(dynamic stats) {
+    // Use best week rate * 7 as a proxy for best streak days if no direct field
+    return (stats.bestWeekRate * 7).round();
   }
 }
 
-/// Small stat card with a label + bold value.
-class _SmallStatCard extends StatelessWidget {
+class _StatTile extends StatelessWidget {
   final String label;
   final String value;
+  final String emoji;
   final ValenceTokens tokens;
-  final dynamic colors;
-  final Color? accent;
 
-  const _SmallStatCard({
+  const _StatTile({
     required this.label,
     required this.value,
+    required this.emoji,
     required this.tokens,
-    required this.colors,
-    this.accent,
   });
 
   @override
   Widget build(BuildContext context) {
-    final valueColor = accent ?? colors.textPrimary;
-
+    final colors = tokens.colors;
     return Container(
       padding: const EdgeInsets.symmetric(
-        horizontal: ValenceSpacing.smMd,
+        horizontal: ValenceSpacing.xs,
         vertical: ValenceSpacing.sm,
       ),
       decoration: BoxDecoration(
@@ -805,16 +305,156 @@ class _SmallStatCard extends StatelessWidget {
         borderRadius: ValenceRadii.mediumAll,
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
+          Text(emoji, style: const TextStyle(fontSize: 18)),
+          const SizedBox(height: 2),
           Text(
             value,
-            style: tokens.typography.numbersBody.copyWith(color: valueColor),
+            style: tokens.typography.numbersBody.copyWith(
+              color: colors.textPrimary,
+              fontSize: 18,
+            ),
           ),
           Text(
             label,
             style: tokens.typography.caption.copyWith(
               color: colors.textSecondary,
+              fontSize: 9,
+            ),
+            textAlign: TextAlign.center,
+            maxLines: 2,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Habit Activity card — mini 7-day bar chart
+// ---------------------------------------------------------------------------
+
+class _HabitActivityCard extends StatelessWidget {
+  final HabitProgress hp;
+  final ValenceTokens tokens;
+
+  const _HabitActivityCard({required this.hp, required this.tokens});
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = tokens.colors;
+    // Build 7-day completion array from heatmap data
+    final now = DateTime.now();
+    final bars = List.generate(7, (i) {
+      final day = now.subtract(Duration(days: 6 - i));
+      final key = DateTime(day.year, day.month, day.day);
+      final val = hp.heatmapData[key] ?? 0;
+      return val > 0 ? 1.0 : 0.0;
+    });
+    final daysLabels = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+
+    return Container(
+      padding: const EdgeInsets.all(ValenceSpacing.md),
+      decoration: BoxDecoration(
+        color: colors.surfacePrimary,
+        borderRadius: ValenceRadii.largeAll,
+      ),
+      child: Row(
+        children: [
+          // Left: habit info
+          Expanded(
+            flex: 3,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      width: 10,
+                      height: 10,
+                      decoration: BoxDecoration(
+                        color: hp.habitColor,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Flexible(
+                      child: Text(
+                        hp.habitName,
+                        style: tokens.typography.body.copyWith(
+                          color: colors.textPrimary,
+                          fontWeight: FontWeight.w600,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Row(
+                  children: [
+                    const Text('🔥', style: TextStyle(fontSize: 12)),
+                    const SizedBox(width: 2),
+                    Text(
+                      '${hp.currentStreak} day streak',
+                      style: tokens.typography.caption.copyWith(
+                        color: colors.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: ValenceSpacing.sm),
+          // Right: mini bar chart
+          Expanded(
+            flex: 4,
+            child: Column(
+              children: [
+                // Bars
+                SizedBox(
+                  height: 32,
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: List.generate(7, (i) {
+                      final filled = bars[i] > 0;
+                      return Expanded(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 1),
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: filled
+                                  ? hp.habitColor
+                                  : hp.habitColor.withValues(alpha: 0.18),
+                              borderRadius: BorderRadius.circular(3),
+                            ),
+                            height: filled ? 28 : 14,
+                          ),
+                        ),
+                      );
+                    }),
+                  ),
+                ),
+                const SizedBox(height: 3),
+                // Day labels
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: List.generate(7, (i) {
+                    return Expanded(
+                      child: Text(
+                        daysLabels[i],
+                        style: tokens.typography.caption.copyWith(
+                          fontSize: 8,
+                          color: colors.textSecondary,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    );
+                  }),
+                ),
+              ],
             ),
           ),
         ],
@@ -823,43 +463,81 @@ class _SmallStatCard extends StatelessWidget {
   }
 }
 
-/// 2-column grid cell.
-class _StatGridCell extends StatelessWidget {
-  final String label;
-  final String value;
-  final ValenceTokens tokens;
-  final dynamic colors;
+// ---------------------------------------------------------------------------
+// 66-Day mastery progress bar
+// ---------------------------------------------------------------------------
 
-  const _StatGridCell({
-    required this.label,
-    required this.value,
-    required this.tokens,
-    required this.colors,
-  });
+class _MasteryBar extends StatelessWidget {
+  final HabitProgress hp;
+  final ValenceTokens tokens;
+
+  const _MasteryBar({required this.hp, required this.tokens});
 
   @override
   Widget build(BuildContext context) {
+    final colors = tokens.colors;
+    final progress = (hp.totalDaysCompleted / 66.0).clamp(0.0, 1.0);
+    final pct = (progress * 100).round();
+
     return Container(
-      padding: const EdgeInsets.all(ValenceSpacing.md),
+      padding: const EdgeInsets.symmetric(
+        horizontal: ValenceSpacing.md,
+        vertical: ValenceSpacing.smMd,
+      ),
       decoration: BoxDecoration(
         color: colors.surfacePrimary,
-        borderRadius: ValenceRadii.mediumAll,
+        borderRadius: ValenceRadii.largeAll,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Text(
-            value,
-            style: tokens.typography.numbersBody.copyWith(
-              color: colors.textPrimary,
+          Row(
+            children: [
+              Row(
+                children: [
+                  Container(
+                    width: 10,
+                    height: 10,
+                    decoration: BoxDecoration(
+                      color: hp.habitColor,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    hp.habitName,
+                    style: tokens.typography.body.copyWith(
+                      color: colors.textPrimary,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+              const Spacer(),
+              Text(
+                '$pct%',
+                style: tokens.typography.caption.copyWith(
+                  color: colors.accentPrimary,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: ValenceSpacing.xs),
+          ClipRRect(
+            borderRadius: ValenceRadii.roundAll,
+            child: LinearProgressIndicator(
+              value: progress,
+              minHeight: 8,
+              backgroundColor: colors.surfaceSunken,
+              valueColor: AlwaysStoppedAnimation<Color>(hp.habitColor),
             ),
           ),
+          const SizedBox(height: 3),
           Text(
-            label,
-            style: tokens.typography.caption.copyWith(
-              color: colors.textSecondary,
-            ),
+            '${hp.totalDaysCompleted} / 66 days  •  ${hp.goalStage.displayName}',
+            style: tokens.typography.caption
+                .copyWith(color: colors.textSecondary),
           ),
         ],
       ),

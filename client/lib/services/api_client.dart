@@ -40,7 +40,7 @@ class ApiClient {
 
   // Dev bypass: set this to a real user ID when running without Firebase
   // to use the server's X-Dev-User-Id header shortcut (NODE_ENV=development only).
-  static String? devUserId;
+  static String? devUserId = 'c0c8ce82-9682-49a9-993b-87cd1ee0ae2e'; // Alice (seeded)
 
   Future<Map<String, String>> _headers() async {
     final headers = <String, String>{

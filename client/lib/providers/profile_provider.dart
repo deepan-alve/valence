@@ -48,6 +48,7 @@ class ProfileProvider extends ChangeNotifier {
   List<PluginConnection> _plugins = _mockPlugins();
   NotificationPreferences _notificationPrefs = const NotificationPreferences();
 
+  bool _personalityOn = true;
   bool _loading = false;
   String? _error;
 
@@ -63,6 +64,7 @@ class ProfileProvider extends ChangeNotifier {
   List<ProfileHabit> get archivedHabits => _habits.where((h) => h.isArchived).toList();
   List<PluginConnection> get plugins => List.unmodifiable(_plugins);
   NotificationPreferences get notificationPrefs => _notificationPrefs;
+  bool get personalityOn => _personalityOn;
   bool get isLoading => _loading;
   String? get error => _error;
 
@@ -107,12 +109,17 @@ class ProfileProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  void toggleNotification(String key, bool value) {
+  void togglePersonality() {
+    _personalityOn = !_personalityOn;
+    notifyListeners();
+  }
+
+  void toggleNotification(String key) {
     _notificationPrefs = switch (key) {
-      'morning' => _notificationPrefs.copyWith(morning: value),
-      'nudges' => _notificationPrefs.copyWith(nudges: value),
-      'memes' => _notificationPrefs.copyWith(memes: value),
-      'reflection' => _notificationPrefs.copyWith(reflection: value),
+      'morning' => _notificationPrefs.copyWith(morning: !_notificationPrefs.morning),
+      'nudges' => _notificationPrefs.copyWith(nudges: !_notificationPrefs.nudges),
+      'memes' => _notificationPrefs.copyWith(memes: !_notificationPrefs.memes),
+      'reflection' => _notificationPrefs.copyWith(reflection: !_notificationPrefs.reflection),
       _ => _notificationPrefs,
     };
     notifyListeners();

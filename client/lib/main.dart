@@ -12,38 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import 'dart:io';
-
 import 'package:flutter/widgets.dart' show WidgetsFlutterBinding, runApp;
-
-import 'common/app_info.dart';
-import 'entries/app/entry.dart';
-import 'logging/logger_manager.dart';
-import 'reminders/notification_service.dart';
-import 'utils/local_timezone.dart';
-import 'widgets/bingding.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'app.dart';
 
 Future<void> main() async {
-  if (Platform.isIOS) {
-    FixedIos26FlutterBinding.ensureInitialized();
-  } else {
-    WidgetsFlutterBinding.ensureInitialized();
-  }
-
+  WidgetsFlutterBinding.ensureInitialized();
   try {
-    print('VALENCE: init logger...');
-    await AppLoggerMananger(t: AppLoggerHandlerType.debugging).init();
-    print('VALENCE: init appinfo...');
-    await AppInfo().init();
-    print('VALENCE: init notifications...');
-    await NotificationService().init();
-    print('VALENCE: init timezone...');
-    await LocalTimeZoneManager().init();
-    print('VALENCE: all init done, running app...');
-  } catch (e, s) {
-    print('VALENCE: init error: $e');
-    print('VALENCE: stack: $s');
+    await Firebase.initializeApp();
+  } catch (_) {
+    // Firebase not configured — app runs in offline/dev mode
   }
-
-  runApp(const AppEntry());
+  runApp(const ValenceApp());
 }
