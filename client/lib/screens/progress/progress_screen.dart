@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:provider/provider.dart';
 import 'package:valence/models/habit_progress.dart';
 import 'package:valence/providers/progress_provider.dart';
@@ -192,7 +193,8 @@ class _RankCard extends StatelessWidget {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Text('🥈', style: TextStyle(fontSize: 14)),
+                    PhosphorIcon(PhosphorIcons.medal(),
+                        size: 14, color: const Color(0xFFC0C0C0)),
                     const SizedBox(width: 4),
                     Text(
                       stats.currentRank,
@@ -249,10 +251,30 @@ class _StatTileRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tiles = [
-      ('Best Streak', '${_bestStreak(stats)}', '🔥'),
-      ('Days Done', '${stats.totalDaysCompleted}', '✅'),
-      ('Perfect Days', '${stats.perfectDays}', '⭐'),
-      ('Graduated', '${stats.habitsGraduated}', '🎓'),
+      (
+        'Best Streak',
+        '${_bestStreak(stats)}',
+        PhosphorIcons.flame(),
+        const Color(0xFFFF6B2B),
+      ),
+      (
+        'Days Done',
+        '${stats.totalDaysCompleted}',
+        PhosphorIcons.checkCircle(),
+        const Color(0xFF22C55E),
+      ),
+      (
+        'Perfect Days',
+        '${stats.perfectDays}',
+        PhosphorIcons.star(),
+        const Color(0xFFF59E0B),
+      ),
+      (
+        'Graduated',
+        '${stats.habitsGraduated}',
+        PhosphorIcons.graduationCap(),
+        const Color(0xFF6366F1),
+      ),
     ];
 
     return Row(
@@ -264,7 +286,8 @@ class _StatTileRow extends StatelessWidget {
             child: _StatTile(
               label: e.value.$1,
               value: e.value.$2,
-              emoji: e.value.$3,
+              icon: e.value.$3,
+              iconColor: e.value.$4,
               tokens: tokens,
             ),
           ),
@@ -282,13 +305,15 @@ class _StatTileRow extends StatelessWidget {
 class _StatTile extends StatelessWidget {
   final String label;
   final String value;
-  final String emoji;
+  final PhosphorIconData icon;
+  final Color iconColor;
   final ValenceTokens tokens;
 
   const _StatTile({
     required this.label,
     required this.value,
-    required this.emoji,
+    required this.icon,
+    required this.iconColor,
     required this.tokens,
   });
 
@@ -306,7 +331,7 @@ class _StatTile extends StatelessWidget {
       ),
       child: Column(
         children: [
-          Text(emoji, style: const TextStyle(fontSize: 18)),
+          PhosphorIcon(icon, size: 18, color: iconColor),
           const SizedBox(height: 2),
           Text(
             value,
@@ -393,7 +418,8 @@ class _HabitActivityCard extends StatelessWidget {
                 const SizedBox(height: 4),
                 Row(
                   children: [
-                    const Text('🔥', style: TextStyle(fontSize: 12)),
+                    PhosphorIcon(PhosphorIcons.flame(),
+                        size: 12, color: const Color(0xFFFF6B2B)),
                     const SizedBox(width: 2),
                     Text(
                       '${hp.currentStreak} day streak',

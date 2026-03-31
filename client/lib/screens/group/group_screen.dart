@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:provider/provider.dart';
 import 'package:valence/models/habit.dart';
 import 'package:valence/models/weekly_score.dart';
@@ -204,7 +205,7 @@ class _Header extends StatelessWidget {
               const SizedBox(height: 2),
               Row(
                 children: [
-                  const Text('🔥', style: TextStyle(fontSize: 14)),
+                  PhosphorIcon(PhosphorIcons.flame(), size: 14, color: const Color(0xFFFF6B2B)),
                   const SizedBox(width: 4),
                   Text(
                     '${group.groupStreak}-day streak',
@@ -355,11 +356,7 @@ class _LeaderboardRow extends StatelessWidget {
           // Rank medal
           SizedBox(
             width: 24,
-            child: Text(
-              _rankEmoji(rank),
-              style: const TextStyle(fontSize: 16),
-              textAlign: TextAlign.center,
-            ),
+            child: _RankIcon(rank: rank),
           ),
           const SizedBox(width: ValenceSpacing.sm),
           // Name
@@ -407,12 +404,29 @@ class _LeaderboardRow extends StatelessWidget {
     );
   }
 
-  String _rankEmoji(int rank) => switch (rank) {
-        1 => '🥇',
-        2 => '🥈',
-        3 => '🥉',
-        _ => '$rank.',
-      };
+}
+
+class _RankIcon extends StatelessWidget {
+  final int rank;
+  const _RankIcon({required this.rank});
+
+  @override
+  Widget build(BuildContext context) {
+    final color = switch (rank) {
+      1 => const Color(0xFFFFD700),
+      2 => const Color(0xFFC0C0C0),
+      3 => const Color(0xFFCD7F32),
+      _ => Colors.grey,
+    };
+    if (rank <= 3) {
+      return PhosphorIcon(PhosphorIcons.medal(), size: 18, color: color);
+    }
+    return Text(
+      '$rank.',
+      style: TextStyle(fontSize: 12, color: color, fontWeight: FontWeight.w700),
+      textAlign: TextAlign.center,
+    );
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -465,12 +479,20 @@ class _BottomActions extends StatelessWidget {
                   borderRadius: ValenceRadii.roundAll,
                 ),
                 child: Center(
-                  child: Text(
-                    'Send Nudge 🫡',
-                    style: tokens.typography.body.copyWith(
-                      color: colors.textInverse,
-                      fontWeight: FontWeight.w700,
-                    ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      PhosphorIcon(PhosphorIcons.bellRinging(),
+                          size: 16, color: colors.textInverse),
+                      const SizedBox(width: 6),
+                      Text(
+                        'Send Nudge',
+                        style: tokens.typography.body.copyWith(
+                          color: colors.textInverse,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
@@ -496,12 +518,20 @@ class _BottomActions extends StatelessWidget {
                   ),
                 ),
                 child: Center(
-                  child: Text(
-                    'Kudos ⭐',
-                    style: tokens.typography.body.copyWith(
-                      color: colors.accentPrimary,
-                      fontWeight: FontWeight.w700,
-                    ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      PhosphorIcon(PhosphorIcons.star(),
+                          size: 16, color: colors.accentPrimary),
+                      const SizedBox(width: 6),
+                      Text(
+                        'Kudos',
+                        style: tokens.typography.body.copyWith(
+                          color: colors.accentPrimary,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
