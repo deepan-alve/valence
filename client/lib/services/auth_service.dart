@@ -1,84 +1,98 @@
+// client/lib/services/auth_service.dart
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter/foundation.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:google_sign_in/google_sign_in.dart';
-import '../models/user.dart';
-import 'api_service.dart';
 
+/// Low-level Firebase Auth wrapper. Providers call this — screens never call it directly.
 class AuthService {
-  final FirebaseAuth _firebaseAuth;
-  final GoogleSignIn _googleSignIn;
-  final ApiService _apiService;
+  FirebaseAuth? _auth;
+  bool _initialized = false;
 
-  AuthService({
-    FirebaseAuth? firebaseAuth,
-    GoogleSignIn? googleSignIn,
-    ApiService? apiService,
-  }) : _firebaseAuth = firebaseAuth ?? FirebaseAuth.instance,
-       _googleSignIn = googleSignIn ?? GoogleSignIn(),
-       _apiService = apiService ?? ApiService();
+  bool get isInitialized => _initialized;
 
-  User? get currentFirebaseUser => _firebaseAuth.currentUser;
-
-  Stream<User?> get authStateChanges => _firebaseAuth.authStateChanges();
-
-  bool get isSupported =>
-      kIsWeb || defaultTargetPlatform == TargetPlatform.android;
-
-  Future<String> getIdToken() async {
-    final user = _firebaseAuth.currentUser;
-    if (user == null) throw Exception('No Firebase user signed in.');
-    final token = await user.getIdToken(true);
-    if (token == null) throw Exception('Failed to get Firebase ID token.');
-    return token;
+  /// Initialize Firebase. Call once at app start.
+  /// Returns false if Firebase is not configured (no google-services.json / GoogleService-Info.plist).
+  Future<bool> initialize() async {
+    try {
+      await Firebase.initializeApp();
+      _auth = FirebaseAuth.instance;
+      _initialized = true;
+      return true;
+    } catch (e) {
+      // Firebase not configured — app runs in offline/demo mode
+      _initialized = false;
+      return false;
+    }
   }
 
-  Future<ValenceUser> signInWithEmail(String email, String password) async {
-    await _firebaseAuth.signInWithEmailAndPassword(
-      email: email,
-      password: password,
-    );
-    final token = await getIdToken();
-    return _apiService.login(firebaseToken: token);
+  /// Current Firebase user, or null if not signed in / not initialized.
+  User? get currentUser => _auth?.currentUser;
+
+  /// Stream of auth state changes. Emits null when signed out.
+  Stream<User?> get authStateChanges =>
+      _auth?.authStateChanges() ?? const Stream.empty();
+
+  /// Sign in with Google. Returns the User on success, null on cancel/failure.
+  Future<User?> signInWithGoogle() async {
+    if (_auth == null) return null;
+    try {
+      final googleUser = await GoogleSignIn().signIn();
+      if (googleUser == null) return null; // User cancelled
+
+      final googleAuth = await googleUser.authentication;
+      final credential = GoogleAuthProvider.credential(
+        accessToken: googleAuth.accessToken,
+        idToken: googleAuth.idToken,
+      );
+
+      final result = await _auth!.signInWithCredential(credential);
+      return result.user;
+    } catch (e) {
+      return null;
+    }
   }
 
-  Future<ValenceUser> signInWithGoogle() async {
-    final googleUser = await _googleSignIn.signIn();
-    if (googleUser == null) throw Exception('Google Sign-In was cancelled.');
-
-    final googleAuth = await googleUser.authentication;
-    final credential = GoogleAuthProvider.credential(
-      accessToken: googleAuth.accessToken,
-      idToken: googleAuth.idToken,
-    );
-    await _firebaseAuth.signInWithCredential(credential);
-    final token = await getIdToken();
-    return _apiService.login(firebaseToken: token);
+  /// Sign up with email and password. Returns the User on success.
+  Future<User?> signUpWithEmail({
+    required String email,
+    required String password,
+    String? displayName,
+  }) async {
+    if (_auth == null) return null;
+    try {
+      final result = await _auth!.createUserWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+      if (displayName != null && result.user != null) {
+        await result.user!.updateDisplayName(displayName);
+      }
+      return result.user;
+    } on FirebaseAuthException {
+      rethrow;
+    }
   }
 
-  Future<void> createEmailAccount(String email, String password) async {
-    await _firebaseAuth.createUserWithEmailAndPassword(
-      email: email,
-      password: password,
-    );
+  /// Sign in with email and password.
+  Future<User?> signInWithEmail({
+    required String email,
+    required String password,
+  }) async {
+    if (_auth == null) return null;
+    try {
+      final result = await _auth!.signInWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+      return result.user;
+    } on FirebaseAuthException {
+      rethrow;
+    }
   }
 
-  Future<ValenceUser> registerUser({String? name, String? timezone}) async {
-    final token = await getIdToken();
-    return _apiService.register(
-      firebaseToken: token,
-      name: name,
-      timezone: timezone,
-    );
-  }
-
-  Future<ValenceUser?> tryRefresh() async {
-    if (_firebaseAuth.currentUser == null) return null;
-    final token = await getIdToken();
-    return _apiService.refresh(firebaseToken: token);
-  }
-
+  /// Sign out from Firebase and Google.
   Future<void> signOut() async {
-    await _googleSignIn.signOut();
-    await _firebaseAuth.signOut();
+    await GoogleSignIn().signOut();
+    await _auth?.signOut();
   }
 }

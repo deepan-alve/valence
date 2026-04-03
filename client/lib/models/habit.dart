@@ -1,98 +1,141 @@
-import 'plugin_goal.dart';
+import 'package:flutter/material.dart';
 
+/// Tracking method for a habit.
+enum TrackingType {
+  /// User taps checkbox to complete.
+  manual,
+
+  /// User must attach a photo to complete.
+  manualPhoto,
+
+  /// Auto-tracked via external plugin (LeetCode, GitHub, etc.).
+  plugin,
+
+  /// Card body opens an external URL; checkbox is still manual.
+  redirect,
+}
+
+/// Subjective effort level for a habit.
+enum HabitIntensity {
+  light,
+  moderate,
+  intense,
+}
+
+/// Day completion status for the week day selector.
+enum DayStatus {
+  /// All habits completed.
+  allDone,
+
+  /// Some habits completed.
+  partial,
+
+  /// No habits completed (past day).
+  missed,
+
+  /// Day hasn't happened yet.
+  future,
+}
+
+/// Chain link quality for group streak visualization.
+enum ChainLinkType {
+  /// Everyone completed --- gold link.
+  gold,
+
+  /// Most completed --- silver link.
+  silver,
+
+  /// Chain broken --- red gap.
+  broken,
+
+  /// Day hasn't happened yet.
+  future,
+}
+
+/// Group tier based on consecutive streak length.
+enum GroupTier {
+  spark,  // 0-6 days
+  ember,  // 7-20 days
+  flame,  // 21-65 days
+  blaze,  // 66+ days
+}
+
+/// Controls what the group sees about this habit (PRD 5.3.5).
+enum HabitVisibility {
+  /// Group sees habit name, completion status, and proof.
+  full,
+
+  /// Group sees only done/not done. Habit name is hidden.
+  /// For sensitive habits (therapy, medication, etc.).
+  minimal,
+}
+
+/// A single habit displayed on the Home screen.
 class Habit {
   final String id;
-  final String userId;
   final String name;
-  final String intensity;
-  final String trackingMethod;
-  final String? pluginId;
-  final PluginGoal? pluginGoal;
+  final String subtitle;
+  final Color color;
+  final String iconName;
+  final TrackingType trackingType;
+  final HabitIntensity intensity;
+  final bool isCompleted;
+  final String? pluginName;
   final String? redirectUrl;
-  final String visibility;
-  final bool isActive;
-  final int currentStreak;
-  final int longestStreak;
-  final int totalCompleted;
-  final String goalStage;
-  final String? lastCompletedDate;
-  final bool todayCompleted;
-  final Map<String, dynamic>? frequencyRule;
-  final Map<String, dynamic>? frequencyStatus;
-  final DateTime createdAt;
-  final DateTime updatedAt;
+  final int streakDays;
+  final HabitVisibility visibility;
 
   const Habit({
     required this.id,
-    required this.userId,
     required this.name,
-    required this.intensity,
-    required this.trackingMethod,
-    this.pluginId,
-    this.pluginGoal,
+    required this.subtitle,
+    required this.color,
+    required this.iconName,
+    required this.trackingType,
+    this.intensity = HabitIntensity.moderate,
+    this.isCompleted = false,
+    this.pluginName,
     this.redirectUrl,
-    required this.visibility,
-    required this.isActive,
-    required this.currentStreak,
-    required this.longestStreak,
-    required this.totalCompleted,
-    required this.goalStage,
-    this.lastCompletedDate,
-    required this.todayCompleted,
-    this.frequencyRule,
-    this.frequencyStatus,
-    required this.createdAt,
-    required this.updatedAt,
+    this.streakDays = 0,
+    this.visibility = HabitVisibility.full,
   });
 
-  factory Habit.fromJson(Map<String, dynamic> json) {
-    final goalRaw = json['pluginGoal'] ?? json['plugin_goal'];
+  /// Whether this habit is tracked by an external plugin.
+  bool get isPlugin => trackingType == TrackingType.plugin;
+
+  /// Whether this habit opens a redirect URL on card body tap.
+  bool get isRedirect => trackingType == TrackingType.redirect;
+
+  /// Whether this habit requires a photo for completion.
+  bool get requiresPhoto => trackingType == TrackingType.manualPhoto;
+
+  Habit copyWith({
+    String? id,
+    String? name,
+    String? subtitle,
+    Color? color,
+    String? iconName,
+    TrackingType? trackingType,
+    HabitIntensity? intensity,
+    bool? isCompleted,
+    String? pluginName,
+    String? redirectUrl,
+    int? streakDays,
+    HabitVisibility? visibility,
+  }) {
     return Habit(
-      id: json['id'] as String,
-      userId: (json['userId'] ?? json['user_id']) as String,
-      name: json['name'] as String,
-      intensity: (json['intensity'] as String?) ?? 'moderate',
-      trackingMethod:
-          (json['trackingMethod'] ?? json['tracking_method'] ?? 'manual')
-              as String,
-      pluginId: (json['pluginId'] ?? json['plugin_id']) as String?,
-      pluginGoal: goalRaw is Map<String, dynamic>
-          ? PluginGoal.fromJson(goalRaw)
-          : null,
-      redirectUrl: (json['redirectUrl'] ?? json['redirect_url']) as String?,
-      visibility: (json['visibility'] as String?) ?? 'full',
-      isActive: (json['isActive'] ?? json['is_active'] ?? true) as bool,
-      currentStreak: _toInt(json['currentStreak'] ?? json['current_streak']),
-      longestStreak: _toInt(json['longestStreak'] ?? json['longest_streak']),
-      totalCompleted: _toInt(json['totalCompleted'] ?? json['total_completed']),
-      goalStage:
-          (json['goalStage'] ?? json['goal_stage'] ?? 'ignition') as String,
-      lastCompletedDate:
-          (json['lastCompletedDate'] ?? json['last_completed_date']) as String?,
-      todayCompleted:
-          (json['completedToday'] ?? json['today_completed'] ?? false) as bool,
-      frequencyRule: _asMap(json['frequencyRule'] ?? json['frequency_rule']),
-      frequencyStatus: _asMap(
-        json['frequencyStatus'] ?? json['frequency_status'],
-      ),
-      createdAt: DateTime.parse(
-        (json['createdAt'] ?? json['created_at']) as String,
-      ),
-      updatedAt: DateTime.parse(
-        (json['updatedAt'] ?? json['updated_at']) as String,
-      ),
+      id: id ?? this.id,
+      name: name ?? this.name,
+      subtitle: subtitle ?? this.subtitle,
+      color: color ?? this.color,
+      iconName: iconName ?? this.iconName,
+      trackingType: trackingType ?? this.trackingType,
+      intensity: intensity ?? this.intensity,
+      isCompleted: isCompleted ?? this.isCompleted,
+      pluginName: pluginName ?? this.pluginName,
+      redirectUrl: redirectUrl ?? this.redirectUrl,
+      streakDays: streakDays ?? this.streakDays,
+      visibility: visibility ?? this.visibility,
     );
-  }
-
-  static Map<String, dynamic>? _asMap(dynamic value) {
-    if (value is Map<String, dynamic>) return value;
-    return null;
-  }
-
-  static int _toInt(dynamic value) {
-    if (value is int) return value;
-    if (value is num) return value.toInt();
-    if (value is String) return int.tryParse(value) ?? 0;
-    return 0;
   }
 }

@@ -1,89 +1,104 @@
+// client/lib/providers/notification_provider.dart
 import 'package:flutter/foundation.dart';
-import '../models/api_response.dart';
-import '../models/app_notification.dart';
-import '../services/api_service.dart';
-import '../services/auth_service.dart';
+import 'package:valence/services/llm_nudge_service.dart';
+import 'package:valence/services/notification_service.dart';
 
+/// Manages notification permission state and scheduled notification toggling.
 class NotificationProvider extends ChangeNotifier {
-  final AuthService _authService;
-  final ApiService _apiService;
+  final NotificationService _service;
+  final LlmNudgeService _llmService;
 
-  List<AppNotification> _notifications = [];
-  bool _isLoading = false;
-  String? _errorMessage;
+  bool _permissionGranted = false;
+  bool _morningEnabled = true;
+  bool _eveningEnabled = true;
+  bool _isInitialized = false;
 
-  NotificationProvider({AuthService? authService, ApiService? apiService})
-    : _authService = authService ?? AuthService(),
-      _apiService = apiService ?? ApiService();
+  NotificationProvider({
+    NotificationService? service,
+    LlmNudgeService? llmService,
+  })  : _service = service ?? NotificationService(),
+        _llmService = llmService ?? LlmNudgeService();
 
-  Future<String> _getToken() async {
-    return _authService.getIdToken();
-  }
+  bool get permissionGranted => _permissionGranted;
+  bool get morningEnabled => _morningEnabled;
+  bool get eveningEnabled => _eveningEnabled;
+  bool get isInitialized => _isInitialized;
 
-  List<AppNotification> get notifications => _notifications;
-  int get unreadCount => _notifications.where((n) => !n.read).length;
-  bool get isLoading => _isLoading;
-  String? get errorMessage => _errorMessage;
+  Future<void> initialize() async {
+    if (_isInitialized) return;
+    await _service.initialize();
+    _isInitialized = true;
 
-  void clearError() {
-    _errorMessage = null;
+    if (_morningEnabled && _permissionGranted) {
+      await _scheduleMorning();
+    }
+    if (_eveningEnabled && _permissionGranted) {
+      await _scheduleEvening();
+    }
+
     notifyListeners();
   }
 
-  Future<void> loadNotifications({bool unreadOnly = false}) async {
-    _isLoading = true;
-    _errorMessage = null;
+  Future<void> requestPermission() async {
+    if (!_isInitialized) await initialize();
+    final granted = await _service.requestPermission();
+    _permissionGranted = granted;
+    if (granted) {
+      if (_morningEnabled) await _scheduleMorning();
+      if (_eveningEnabled) await _scheduleEvening();
+    }
     notifyListeners();
-
-    try {
-      final token = await _getToken();
-      _notifications = await _apiService.getNotifications(
-        token: token,
-        unreadOnly: unreadOnly,
-      );
-    } on ApiException catch (e) {
-      _errorMessage = e.message;
-    } catch (e) {
-      _errorMessage = 'Failed to load notifications.';
-    } finally {
-      _isLoading = false;
-      notifyListeners();
-    }
   }
 
-  Future<bool> markAsRead(String notificationId) async {
-    try {
-      final token = await _getToken();
-      await _apiService.markNotificationRead(
-        token: token,
-        notificationId: notificationId,
-      );
-      // Update local state
-      _notifications = _notifications.map((n) {
-        if (n.id == notificationId) {
-          return AppNotification(
-            id: n.id,
-            type: n.type,
-            title: n.title,
-            body: n.body,
-            data: n.data,
-            read: true,
-            createdAt: n.createdAt,
-          );
-        }
-        return n;
-      }).toList();
-      notifyListeners();
-      return true;
-    } catch (e) {
-      return false;
-    }
+  void setPermissionGranted(bool value) {
+    _permissionGranted = value;
+    notifyListeners();
   }
 
-  Future<void> markAllAsRead() async {
-    final unread = _notifications.where((n) => !n.read).toList();
-    for (final n in unread) {
-      await markAsRead(n.id);
+  void toggleMorning() {
+    _morningEnabled = !_morningEnabled;
+    if (_morningEnabled && _permissionGranted) {
+      _scheduleMorning();
+    } else {
+      _service.cancelByChannel(NotificationChannel.morning);
     }
+    notifyListeners();
+  }
+
+  void toggleEvening() {
+    _eveningEnabled = !_eveningEnabled;
+    if (_eveningEnabled && _permissionGranted) {
+      _scheduleEvening();
+    } else {
+      _service.cancelByChannel(NotificationChannel.evening);
+    }
+    notifyListeners();
+  }
+
+  Future<void> scheduleRecoveryNudge(String habitName) async {
+    if (!_permissionGranted) return;
+    final body = await _llmService.generateMorningActivation(
+      userName: 'you',
+      friendsCompleted: 0,
+    );
+    await _service.scheduleRecoveryNudge(habitName: habitName, body: body);
+  }
+
+  Future<void> _scheduleMorning() async {
+    final body = await _llmService.generateMorningActivation(
+      userName: 'you',
+      friendsCompleted: 2,
+    );
+    await _service.scheduleMorningActivation(
+      title: 'Time to build something great',
+      body: body,
+    );
+  }
+
+  Future<void> _scheduleEvening() async {
+    await _service.scheduleEveningReflection(
+      title: 'Quick reflection on today?',
+      body: 'It only takes 15 seconds. How did your habits go today?',
+    );
   }
 }

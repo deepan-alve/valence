@@ -1,0 +1,232 @@
+{
+    "_contributor": [
+        {
+            "id": 1,
+            "name": "FriesI23",
+            "url": "https://github.com/FriesI23",
+            "comment": "project creator"
+        },
+        {
+            "id": 2,
+            "name": "parselings",
+            "url": "https://github.com/parselings"
+        },
+        {
+            "id": 3,
+            "name": "konstantintutsch",
+            "url": "https://github.com/konstantintutsch"
+        },
+        {
+            "id": 4,
+            "name": "ngocanhtve",
+            "url": "https://github.com/ngocanhtve"
+        },
+        {
+            "id": 5,
+            "name": "chromer030",
+            "url": "https://github.com/chromer030"
+        },
+        {
+            "id": 6,
+            "name": "Poussinou",
+            "url": "https://github.com/Poussinou"
+        },
+        {
+            "id": 7,
+            "name": "yurtpage",
+            "url": "https://github.com/yurtpage"
+        },
+        {
+            "id": 8,
+            "name": "rxzheng",
+            "url": "https://github.com/rxzheng"
+        },
+        {
+            "id": 9,
+            "name": "spar34vi",
+            "url": "https://github.com/spar34vi"
+        },
+        {
+            "id": 10,
+            "name": "croozer4",
+            "url": "https://github.com/croozer4"
+        },
+        {
+            "id": 11,
+            "name": "shirleycrow",
+            "comment": "Japanese translation contribution"
+        },
+        {
+            "id": 12,
+            "name": "peterczegledy",
+            "url": "https://github.com/peterczegledy",
+            "comment": "Hungarian translation contribution"
+        }
+    ],
+    "contributors": [ 1, 2, 3, 4, 5, 6, 7, 8, 9,
+        {
+            "name": "12people",
+            "url": "https://github.com/12people"
+        }
+    ],
+    "translations": {
+        "ar": [
+            {
+                "name": "aalmalki3"
+            },
+            {
+                "name": "abdelbasset jabrane"
+            }
+        ],
+        "cs": [
+            {
+                "name": "Jirka Čapek",
+                "email": "jirkacapek13@gmail.com"
+            },
+            {
+                "name": "tenJirka",
+                "email": "jirka.steh@gmail.com"
+            }
+        ],
+        "de": [
+            3,
+            {
+                "name": "TheKos",
+                "email": "noahwessendorf@gmail.com"
+            }
+        ],
+        "fa": [ 5,
+            {
+                "name": "ulracte"
+            }
+        ],
+        "fr": [
+            2,
+            {
+                "name": "Massine Y",
+                "email": "enissam_426@hotmail.com"
+            }
+        ],
+        "es": [
+            {
+                "name": "Andres Blasco Arnáiz",
+                "email": "andresbarnaiz@gmail.com"
+            },
+            {
+                "name": "gallegonovato",
+                "email": "fran-carro@hotmail.es"
+            },
+            {
+                "name": "Patricio Carrau",
+                "email": "uckycb@proton.me"
+            },
+            {
+                "name": "Óscar Fernández Díaz"
+            },
+            {
+                "name": "Angel",
+                "email": "angel.vinas@gmx.es"
+            }
+
+        ],
+        "en": [
+            1,
+            {
+                "name": "3Lord3",
+                "url": "https://github.com/3Lord3"
+            }
+        ],
+        "he": [
+            {
+                "name": "Omer I.S",
+                "email": "omeritzicschwartz@gmail.com"
+            },
+            {
+                "name": "sudo-py-dev",
+                "email": "sudopydev@gmail.com"
+            }
+        ],
+        "hu": [ 12 ],
+        "it": [
+            9,
+            {
+                "name": "glemco",
+                "email": "glemco@posteo.net"
+            }
+        ],
+        "ja": [ 11 ],
+        "pl": [
+            {
+                "name": "Bartek Skrzypek",
+                "email": "bskrzypek00@gmail.com"
+            },
+            {
+                "name": "Pandaman331",
+                "email": "kozekmc.1234@gmail.com"
+            },
+            10
+        ],
+        "pt": [
+            {
+                "name": "J",
+                "email": "wlate.3zz37@slmail.me"
+            },
+            {
+                "name": "Nikolas Gonçalves dos Santos",
+                "email": "nikolasgads@gmail.com"
+            },
+            {
+                "name": "Jonathan Soares",
+                "email": "cb6gvwvm@duck.com"
+            }
+        ],
+        "ru": [ 7 ],
+        "tr": [
+            {
+                "name": "Soykan Aydın",
+                "email": "soykan.aydin@gmail.com"
+            },
+            {
+                "name": "Bora Atıc",
+                "email": "boratici.acc@gmail.com"
+            },
+            {
+                "name": "Rudoy Artyom",
+                "email": "rudoyartyom@proton.me"
+            }
+        ],
+        "uk": [
+            {
+                "name": "Fqwe1"
+            },
+            {
+                "name": "Максим Горпиніч",
+                "email": "mgorpinic2005@gmail.com"
+            },
+            {
+                "name": "Павло Погонець",
+                "url": "https://github.com/PavloPogonets"
+            }
+        ],
+        "vi": [
+            4,
+            {
+                "name": "Loc Huynh",
+                "email": "huynhloc.contact@gmail.com"
+            }
+        ],
+        "zh": [
+            1,
+            {
+                "name": "ADAIBLOG",
+                "email": "adaigeek@outlook.com"
+            }
+        ],
+        "zh-hant": [
+            {
+                "name": "PeterDaveHello",
+                "url": "https://github.com/PeterDaveHello"
+            }
+        ]
+    }
+}

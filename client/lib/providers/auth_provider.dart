@@ -1,169 +1,195 @@
+// client/lib/providers/auth_provider.dart
+import 'dart:async';
 import 'package:flutter/foundation.dart';
-import '../models/api_response.dart';
-import '../models/user.dart';
-import '../services/auth_service.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:valence/services/auth_service.dart';
 
+enum AuthStatus { unknown, authenticated, unauthenticated }
+
+/// Manages auth state for the entire app. Wraps AuthService.
 class AuthProvider extends ChangeNotifier {
   final AuthService _authService;
 
-  ValenceUser? _user;
-  bool _isLoading = false;
-  String? _errorMessage;
-  bool _needsRegistration = false;
-  bool _isSignUp = false;
+  AuthStatus _status = AuthStatus.unknown;
+  User? _user;
+  bool _firebaseAvailable = false;
+  String? _error;
+  bool _loading = false;
+  StreamSubscription<User?>? _authSubscription;
+  bool _initialized = false;
 
   AuthProvider({AuthService? authService})
-    : _authService = authService ?? AuthService();
+      : _authService = authService ?? AuthService();
 
-  ValenceUser? get user => _user;
-  bool get isLoading => _isLoading;
-  String? get errorMessage => _errorMessage;
-  bool get needsRegistration => _needsRegistration;
-  bool get isSignUp => _isSignUp;
-  bool get isSupported => _authService.isSupported;
+  AuthStatus get status => _status;
+  User? get user => _user;
+  bool get isAuthenticated => _status == AuthStatus.authenticated;
+  bool get firebaseAvailable => _firebaseAvailable;
+  String? get error => _error;
+  bool get isLoading => _loading;
+  String get displayName => _user?.displayName ?? 'Friend';
 
-  void clearError() {
-    _errorMessage = null;
-    notifyListeners();
-  }
+  /// Initialize Firebase and listen to auth state changes.
+  /// Safe to call multiple times — subsequent calls are no-ops.
+  Future<void> initialize() async {
+    if (_initialized) return;
+    _initialized = true;
 
-  void setSignUp(bool value) {
-    _isSignUp = value;
-    _errorMessage = null;
-    notifyListeners();
-  }
+    _firebaseAvailable = await _authService.initialize();
 
-  Future<void> signInWithEmail(String email, String password) async {
-    _isLoading = true;
-    _errorMessage = null;
-    notifyListeners();
+    if (_firebaseAvailable) {
+      // Seed from current user immediately to avoid race with stream
+      final currentUser = _authService.currentUser;
+      if (currentUser != null) {
+        _user = currentUser;
+        _status = AuthStatus.authenticated;
+      } else {
+        _status = AuthStatus.unauthenticated;
+      }
+      notifyListeners();
 
-    try {
-      _user = await _authService.signInWithEmail(email, password);
-      _needsRegistration = false;
-    } on UserNotFoundException {
-      _needsRegistration = true;
-    } on ApiException catch (e) {
-      _errorMessage = e.message;
-    } catch (e) {
-      _errorMessage = _friendlyError(e);
-    } finally {
-      _isLoading = false;
+      // Then listen for future changes — store subscription for cleanup
+      _authSubscription = _authService.authStateChanges.listen((user) {
+        _user = user;
+        _status = user != null
+            ? AuthStatus.authenticated
+            : AuthStatus.unauthenticated;
+        notifyListeners();
+      });
+    } else {
+      // Firebase not configured — treat as unauthenticated, allow onboarding
+      _status = AuthStatus.unauthenticated;
       notifyListeners();
     }
   }
 
-  Future<void> signInWithGoogle() async {
-    _isLoading = true;
-    _errorMessage = null;
+  @override
+  void dispose() {
+    _authSubscription?.cancel();
+    super.dispose();
+  }
+
+  Future<bool> signInWithGoogle() async {
+    _loading = true;
+    _error = null;
     notifyListeners();
 
     try {
-      _user = await _authService.signInWithGoogle();
-      _needsRegistration = false;
-    } on UserNotFoundException {
-      _needsRegistration = true;
-    } on ApiException catch (e) {
-      _errorMessage = e.message;
-    } catch (e) {
-      _errorMessage = _friendlyError(e);
-    } finally {
-      _isLoading = false;
+      final user = await _authService.signInWithGoogle();
+      _loading = false;
+      if (user != null) {
+        _user = user;
+        _status = AuthStatus.authenticated;
+        notifyListeners();
+        return true;
+      }
+      _error = 'Google sign-in was cancelled.';
       notifyListeners();
+      return false;
+    } catch (e) {
+      _loading = false;
+      _error = 'Google sign-in failed. Please try again.';
+      notifyListeners();
+      return false;
     }
   }
 
-  Future<void> signUpWithEmail(String email, String password) async {
-    _isLoading = true;
-    _errorMessage = null;
-    notifyListeners();
-
-    try {
-      await _authService.createEmailAccount(email, password);
-      _needsRegistration = true;
-    } catch (e) {
-      _errorMessage = _friendlyError(e);
-    } finally {
-      _isLoading = false;
-      notifyListeners();
-    }
-  }
-
-  Future<void> register({
+  Future<bool> signUpWithEmail({
     required String name,
-    required String timezone,
+    required String email,
+    required String password,
   }) async {
-    _isLoading = true;
-    _errorMessage = null;
+    _loading = true;
+    _error = null;
     notifyListeners();
 
     try {
-      _user = await _authService.registerUser(name: name, timezone: timezone);
-      _needsRegistration = false;
-    } on ApiException catch (e) {
-      _errorMessage = e.message;
-    } catch (e) {
-      _errorMessage = _friendlyError(e);
-    } finally {
-      _isLoading = false;
+      final user = await _authService.signUpWithEmail(
+        email: email,
+        password: password,
+        displayName: name,
+      );
+      _loading = false;
+      if (user != null) {
+        _user = user;
+        _status = AuthStatus.authenticated;
+        notifyListeners();
+        return true;
+      }
+      _error = 'Sign-up failed. Please try again.';
       notifyListeners();
+      return false;
+    } on FirebaseAuthException catch (e) {
+      _loading = false;
+      _error = _mapFirebaseError(e.code);
+      notifyListeners();
+      return false;
     }
   }
 
-  Future<void> tryAutoLogin() async {
-    _isLoading = true;
+  Future<bool> signInWithEmail({
+    required String email,
+    required String password,
+  }) async {
+    _loading = true;
+    _error = null;
     notifyListeners();
 
     try {
-      _user = await _authService.tryRefresh();
-    } catch (_) {
-      // Silent failure — user just stays on login screen
-    } finally {
-      _isLoading = false;
+      final user = await _authService.signInWithEmail(
+        email: email,
+        password: password,
+      );
+      _loading = false;
+      if (user != null) {
+        _user = user;
+        _status = AuthStatus.authenticated;
+        notifyListeners();
+        return true;
+      }
+      _error = 'Sign-in failed. Please try again.';
       notifyListeners();
+      return false;
+    } on FirebaseAuthException catch (e) {
+      _loading = false;
+      _error = _mapFirebaseError(e.code);
+      notifyListeners();
+      return false;
     }
+  }
+
+  /// Skip auth — for demo/offline mode when Firebase is not configured.
+  void skipAuth() {
+    _status = AuthStatus.authenticated;
+    notifyListeners();
   }
 
   Future<void> signOut() async {
-    _isLoading = true;
+    await _authService.signOut();
+    _user = null;
+    _status = AuthStatus.unauthenticated;
     notifyListeners();
-
-    try {
-      await _authService.signOut();
-      _user = null;
-      _needsRegistration = false;
-      _isSignUp = false;
-    } catch (e) {
-      _errorMessage = _friendlyError(e);
-    } finally {
-      _isLoading = false;
-      notifyListeners();
-    }
   }
 
-  String _friendlyError(Object e) {
-    final msg = e.toString();
-    if (msg.contains('network') || msg.contains('SocketException')) {
-      return 'Unable to reach the server. Check your connection.';
+  void clearError() {
+    _error = null;
+    notifyListeners();
+  }
+
+  String _mapFirebaseError(String code) {
+    switch (code) {
+      case 'email-already-in-use':
+        return 'An account already exists with this email.';
+      case 'weak-password':
+        return 'Password must be at least 6 characters.';
+      case 'invalid-email':
+        return 'Please enter a valid email address.';
+      case 'user-not-found':
+        return 'No account found with this email.';
+      case 'wrong-password':
+        return 'Incorrect password. Please try again.';
+      default:
+        return 'Something went wrong. Please try again.';
     }
-    if (msg.contains('wrong-password') || msg.contains('invalid-credential')) {
-      return 'Incorrect email or password.';
-    }
-    if (msg.contains('user-not-found')) {
-      return 'No account found with this email.';
-    }
-    if (msg.contains('email-already-in-use')) {
-      return 'An account with this email already exists.';
-    }
-    if (msg.contains('weak-password')) {
-      return 'Password is too weak. Use at least 6 characters.';
-    }
-    if (msg.contains('invalid-email')) {
-      return 'Please enter a valid email address.';
-    }
-    if (msg.contains('cancelled')) {
-      return 'Sign-in was cancelled.';
-    }
-    return 'Something went wrong. Please try again.';
   }
 }

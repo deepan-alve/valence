@@ -114,6 +114,6 @@ jobs:
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: valence-debug-${{ github.sha }}
+          name: qashare-debug-${{ github.sha }}
           path: client/build/app/outputs/flutter-apk/app-debug.apk
           retention-days: 30
